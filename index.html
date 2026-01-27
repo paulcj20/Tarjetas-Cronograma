@@ -463,14 +463,6 @@
             transition: background var(--transition-base), color var(--transition-base);
         }
 
-        th[data-column="origen"],
-        th[data-column="destino"],
-        td[data-column="origen"],
-        td[data-column="destino"] {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
         th:hover {
             background: rgba(37, 99, 235, 0.08);
         }
@@ -600,9 +592,7 @@
                 <div class="filter-item">
                     <label>Mes</label>
                     <select id="filterMes">
-                        <option value="Oct 25">Octubre 2025</option>
-                        <option value="Nov 25">Noviembre 2025</option>
-                        <option value="Dic 25">Diciembre 2025</option>
+                        <option value="">Todos</option>
                     </select>
                 </div>
                 <div class="filter-item">

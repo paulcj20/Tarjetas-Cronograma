@@ -110,10 +110,54 @@ function fetchData() {
     const selectMes = document.getElementById('filterMes');
     const mesSeleccionado = selectMes ? selectMes.value : '';
     currentMonth = mesSeleccionado;
-      console.log('🔄 fetchData: Iniciando carga de datos para', mesSeleccionado || '(sin seleccionar)');
+      console.log('🔄 fetchData: Iniciando carga de datos para', mesSeleccionado || '(Todos los meses)');
     console.log('📍 URL_API:', URL_API);
       if (!mesSeleccionado) {
-        console.warn('⚠️ No se ha seleccionado un mes válido.');
+        console.log('📅 "Todos" seleccionado - cargando todos los meses disponibles');
+        const availableMonths = getAvailableMonths();
+        
+        if (availableMonths.length === 0) {
+            console.warn('⚠️ No hay meses disponibles en el dropdown.');
+            return;
+        }
+        
+        // Precargar todos los meses y luego mostrar datos consolidados
+        let loadedCount = 0;
+        availableMonths.forEach(month => {
+            if (!historicalData[month]) {
+                requestSheetData(
+                    month,
+                    data => {
+                        if (Array.isArray(data)) {
+                            historicalData[month] = normalizeDataset(data, month);
+                            console.log(`📦 Mes cargado (${month}):`, historicalData[month].length, 'registros');
+                        } else {
+                            console.warn(`⚠️ Datos inválidos para ${month}`);
+                            historicalData[month] = [];
+                        }
+                        loadedCount++;
+                        
+                        // Cuando todos los meses estén cargados, procesar datos consolidados
+                        if (loadedCount === availableMonths.length) {
+                            processDataAllMonths();
+                        }
+                    },
+                    () => {
+                        console.warn(`⚠️ Error al cargar ${month}`);
+                        loadedCount++;
+                        if (loadedCount === availableMonths.length) {
+                            processDataAllMonths();
+                        }
+                    },
+                    { silent: true }
+                );
+            }
+        });
+        
+        // Si ya todos los meses están cargados, procesar inmediatamente
+        if (availableMonths.every(month => historicalData[month])) {
+            processDataAllMonths();
+        }
         return;
     }
       requestSheetData(
@@ -210,6 +254,10 @@ function fetchData() {
     });
 }
   function normalizeDataset(data, monthKey) {
+    if (!Array.isArray(data)) {
+        console.warn(`⚠️ normalizeDataset: data no es un array para ${monthKey}`, typeof data, data);
+        return [];
+    }
     return data.map(row => {
         const map = buildRowMap(row);
         const kilometros = getNumber(map, ['Kilometros', 'KM Promedio', 'KM']);
@@ -316,6 +364,29 @@ function fetchData() {
         console.error('❌ Error en processData:', error);
         document.getElementById('tableWrapper').innerHTML = 
             `<div class="error">Error al procesar datos: ${error.message}</div>`;
+    }
+}
+  function processDataAllMonths() {
+    try {
+        console.log('🔧 processDataAllMonths: Procesando todos los meses consolidados');
+        
+        // Consolidar todos los datos de los meses cargados
+        allData = getHistoricalRows();
+        
+        console.log('📊 Datos consolidados:', allData.length, 'registros totales');
+        
+        // Inicializar filtros con opciones únicas
+        populateFilters();
+        
+        // Aplicar filtros iniciales (todos los datos)
+        applyFilters();
+        
+        console.log('✅ Dashboard cargado exitosamente (Todos los meses)');
+        
+    } catch (error) {
+        console.error('❌ Error en processDataAllMonths:', error);
+        document.getElementById('tableWrapper').innerHTML = 
+            `<div class="error">Error al procesar datos consolidados: ${error.message}</div>`;
     }
 }
   // ============================================================================
@@ -1250,8 +1321,8 @@ let currentSort = { column: null, direction: 'asc' };
                     <th class="sortable" onclick="sortTable('carpeta')">N° Carpeta<div class="resizer"></div></th>
                     <th class="sortable" onclick="sortTable('contenedor')">Contenedor<div class="resizer"></div></th>
                     <th class="sortable" onclick="sortTable('cliente')">Cliente<div class="resizer"></div></th>
-                    <th class="sortable" data-column="origen" onclick="sortTable('origen')">Origen<div class="resizer"></div></th>
-                    <th class="sortable" data-column="destino" onclick="sortTable('destino')">Destino<div class="resizer"></div></th>
+                    <th class="sortable" onclick="sortTable('origen')">Origen<div class="resizer"></div></th>
+                    <th class="sortable" onclick="sortTable('destino')">Destino<div class="resizer"></div></th>
                     <th class="sortable" onclick="sortTable('tipoOP')">Tipo OP<div class="resizer"></div></th>
                     <th class="sortable" onclick="sortTable('terciarizado')">Terciarizado<div class="resizer"></div></th>
                     <th class="sortable" onclick="sortTable('ventaFlete')">Venta Flete<div class="resizer"></div></th>
@@ -1270,8 +1341,8 @@ let currentSort = { column: null, direction: 'asc' };
                         <td>${row.carpeta}</td>
                         <td>${row.contenedor}</td>
                         <td>${row.cliente}</td>
-                        <td data-column="origen">${row.origen}</td>
-                        <td data-column="destino">${row.destino}</td>
+                        <td>${row.origen}</td>
+                        <td>${row.destino}</td>
                         <td>${row.tipoOP}</td>
                         <td>${row.terciarizado}</td>
                         <td>${formatCurrency(row.ventaFlete)}</td>
@@ -1441,6 +1512,9 @@ function formatCurrency(value, decimals = 0) {
 // EVENT LISTENERS: Búsquedas en tiempo real y cambio de mes
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Primero, cargar dinámicamente los meses disponibles
+    loadAvailableMonths();
+    
     document.getElementById('searchCarpeta').addEventListener('input', applyFilters);
     document.getElementById('searchContenedor').addEventListener('input', applyFilters);
     document.getElementById('filterMes').addEventListener('change', () => {
@@ -1461,7 +1535,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
   // ============================================================================
+// FUNCIÓN: Cargar dinámicamente los meses disponibles
+// ============================================================================
+function loadAvailableMonths() {
+    console.log('🔍 Buscando planillas disponibles...');
+    
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const currentYear = new Date().getFullYear();
+    const yearsToCheck = [currentYear - 1, currentYear, currentYear + 1]; // Años anteriores, actual y siguiente
+    const availableSheets = [];
+    let totalRequests = 0;
+    let completedRequests = 0;
+    
+    // Generar combinaciones de mes-año
+    const combinations = [];
+    yearsToCheck.forEach(year => {
+        monthNames.forEach(month => {
+            const yearShort = year.toString().slice(-2);
+            combinations.push({
+                label: `${month} ${year}`,
+                value: `${month} ${yearShort}`
+            });
+        });
+    });
+    
+    totalRequests = combinations.length;
+    
+    // Intentar cargar cada combinación de forma silenciosa
+    combinations.forEach(combo => {
+        requestSheetData(
+            combo.value,
+            (data) => {
+                // Verificar que data sea un array válido
+                if (Array.isArray(data) && data.length > 0) {
+                    console.log(`✅ Planilla disponible: ${combo.value}`);
+                    availableSheets.push(combo);
+                }
+                completedRequests++;
+                
+                // Cuando terminen todas las solicitudes, actualizar el dropdown
+                if (completedRequests === totalRequests) {
+                    populateMonthDropdown(availableSheets);
+                }
+            },
+            () => {
+                // Silenciosamente ignorar errores de planillas no disponibles
+                completedRequests++;
+                if (completedRequests === totalRequests) {
+                    populateMonthDropdown(availableSheets);
+                }
+            },
+            { silent: true }
+        );
+    });
+}
+
+function populateMonthDropdown(availableSheets) {
+    const select = document.getElementById('filterMes');
+    if (!select) return;
+    
+    // Limpiar opciones existentes excepto "Todos"
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+    
+    // Agregar opciones dinámicamente (ordenadas por fecha más reciente primero)
+    availableSheets.sort((a, b) => b.value.localeCompare(a.value));
+    
+    availableSheets.forEach(sheet => {
+        const option = document.createElement('option');
+        option.value = sheet.value;
+        option.textContent = sheet.label;
+        select.appendChild(option);
+    });
+    
+    console.log(`📊 Se encontraron ${availableSheets.length} planillas disponibles`);
+    
+    // Cargar datos con el primer mes disponible
+    if (availableSheets.length > 0) {
+        select.value = availableSheets[0].value;
+        fetchData();
+    }
+}
+  // ============================================================================
 // INICIALIZACIÓN: Cargar datos al iniciar
 // ============================================================================
-fetchData();
+// Los datos se cargarán automáticamente después de que loadAvailableMonths() complete
+
+
 
