@@ -879,15 +879,11 @@ function buildCard(row, headers, sheetTab) {
   body.className = 'card-body';
   let count = 0;
 
-  // En hojas con whitelist explícita, mostrar la columna aunque esté vacía
-  const isWhitelist = !!(scfg.visibleCols || scfg.visibleColIdxs);
-
   headers.forEach((k, i) => {
     if (!isColVisible(k, i, scfg)) return;
     if (extraKeys.has(k)) return;
     if (!extras.length && i === titleIdx) return;  // ya está en el título
     const c = row[k];
-    if (!isWhitelist && !c?.d) return;  // hojas sin whitelist: omitir vacíos
 
     const kv = document.createElement('div');
     kv.className = 'kv';
