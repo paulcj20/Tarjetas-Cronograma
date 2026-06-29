@@ -648,8 +648,10 @@ function buildSuggestions() {
   cfg.sheets.forEach(s => {
     const d = cache[s.tab];
     if (!d || d.err) return;
+    const scfg = SHEET_CONFIG[s.tab];
     d.rows.forEach(row => {
-      d.headers.forEach(h => {
+      d.headers.forEach((h, i) => {
+        if (!isColVisible(h, i, scfg)) return;
         const v = row[h]?.d;
         if (v && v.length > 1 && v.length < 60 && !seen.has(v)) {
           seen.add(v);
