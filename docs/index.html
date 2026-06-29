@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Finanzas</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Finanzas">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #3b82f6;
+      --green:   #22c55e;
+      --red:     #ef4444;
+      --yellow:  #eab308;
+      --bg:      #0f172a;
+      --surf:    #1e293b;
+      --surf2:   #334155;
+      --border:  rgba(255,255,255,0.07);
+      --text:    #f8fafc;
+      --muted:   #94a3b8;
+      --dim:     #475569;
+      --r:       14px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    #app { display: flex; flex-direction: column; height: 100%; }
+
+    /* ── Header ── */
+    .hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      background: var(--surf);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .hdr-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .hdr-logo svg { width: 32px; height: 32px; flex-shrink: 0; }
+    .hdr-btns { display: flex; gap: 6px; }
+    .ibtn {
+      width: 38px; height: 38px;
+      border: none; border-radius: 10px;
+      background: var(--surf2);
+      color: var(--text);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity .15s;
+    }
+    .ibtn:active { opacity: .6; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      overflow-x: auto;
+      background: var(--surf);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tabs:empty { display: none; }
+    .tab {
+      padding: 11px 18px;
+      font-size: 13px; font-weight: 500;
+      color: var(--muted);
+      border: none; background: none;
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .tab.on { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Status ── */
+    .statusbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 16px 10px;
+      font-size: 11px; color: var(--dim);
+    }
+    .dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .dot.spin  { background: var(--yellow); animation: blink .8s infinite; }
+    .dot.error { background: var(--red); }
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes rot   { to { transform: rotate(360deg); } }
+
+    /* ── Content ── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 12px;
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+
+    /* ── Grid de tarjetas ── */
+    .grid { display: grid; gap: 10px; padding-top: 4px; }
+    @media (min-width: 540px) { .grid { grid-template-columns: repeat(2,1fr); } }
+    @media (min-width: 900px) { .grid { grid-template-columns: repeat(3,1fr); } }
+
+    /* ── Tarjeta ── */
+    .card {
+      background: var(--surf);
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .card-top {
+      padding: 13px 14px 9px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 600;
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pill {
+      font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 20px; flex-shrink: 0;
+    }
+    .pill.pos { background: rgba(34,197,94,.15); color: var(--green); }
+    .pill.neg { background: rgba(239,68,68,.15);  color: var(--red); }
+    .pill.neu { background: var(--surf2); color: var(--muted); }
+
+    .card-body { padding: 10px 14px 13px; display: flex; flex-direction: column; gap: 7px; }
+    .kv { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .kv-k {
+      font-size: 12px; color: var(--muted); flex-shrink: 0;
+      max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .kv-v { font-size: 13px; font-weight: 500; text-align: right; word-break: break-word; }
+    .kv-v.pos { color: var(--green); }
+    .kv-v.neg { color: var(--red); }
+    .kv-v.num { font-variant-numeric: tabular-nums; }
+
+    /* ── Skeleton ── */
+    .sk-card {
+      background: var(--surf); border-radius: var(--r); border: 1px solid var(--border);
+      padding: 14px; display: flex; flex-direction: column; gap: 9px;
+    }
+    .sk {
+      border-radius: 6px; height: 13px;
+      background: linear-gradient(90deg, var(--surf2) 25%, var(--dim) 50%, var(--surf2) 75%);
+      background-size: 300% 100%;
+      animation: sh 1.4s infinite;
+    }
+    @keyframes sh { to { background-position: -200% 0; } }
+
+    /* ── Error / empty ── */
+    .center {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; padding: 60px 24px; gap: 12px;
+    }
+    .center-icon { font-size: 44px; }
+    .center-title { font-size: 17px; font-weight: 600; }
+    .center-sub { font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 300px; }
+    .btn-pri {
+      padding: 11px 24px; border: none; border-radius: 10px;
+      background: var(--primary); color: #fff;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+
+    /* ── Settings overlay ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 200;
+      display: flex; align-items: flex-end;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s;
+    }
+    .overlay.on { opacity: 1; pointer-events: all; }
+    .sheet {
+      background: var(--surf); width: 100%;
+      border-radius: 20px 20px 0 0;
+      max-height: 90vh; overflow-y: auto;
+      padding: 8px 16px 20px;
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,.72,0,1);
+    }
+    .overlay.on .sheet { transform: none; }
+    .handle {
+      width: 36px; height: 4px; background: var(--surf2);
+      border-radius: 2px; margin: 12px auto 16px;
+    }
+    .s-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .s-hdr span { font-size: 17px; font-weight: 700; }
+    .s-sec { margin-bottom: 20px; }
+    .s-lbl {
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .07em;
+      color: var(--muted); margin-bottom: 8px;
+    }
+    .s-help { font-size: 11px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+    .inp {
+      width: 100%; background: var(--surf2);
+      border: 1px solid transparent; border-radius: 10px;
+      padding: 11px 13px; color: var(--text); font-size: 14px; outline: none;
+      transition: border-color .15s;
+    }
+    .inp:focus { border-color: var(--primary); }
+    .inp::placeholder { color: var(--dim); }
+
+    .slist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+    .sitem {
+      display: flex; align-items: center;
+      background: var(--surf2); border-radius: 10px;
+      padding: 11px 12px; gap: 10px;
+    }
+    .sitem-info { flex: 1; overflow: hidden; }
+    .sitem-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sitem-gid  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .del-btn {
+      width: 28px; height: 28px;
+      border: none; border-radius: 8px;
+      background: rgba(239,68,68,.15); color: var(--red);
+      cursor: pointer; font-size: 18px; line-height: 1;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .add-row {
+      display: grid;
+      grid-template-columns: 1fr 80px auto;
+      gap: 8px; align-items: center;
+    }
+    .add-btn {
+      height: 42px; padding: 0 14px;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .intvl-row { display: flex; align-items: center; gap: 10px; }
+    .intvl-row .inp { width: 80px; }
+    .intvl-row span { font-size: 14px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-logo">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="#1e293b"/>
+        <rect x="5"  y="21" width="5" height="7"  rx="1.5" fill="#3b82f6"/>
+        <rect x="13" y="15" width="5" height="13" rx="1.5" fill="#3b82f6"/>
+        <rect x="22" y="9"  width="5" height="19" rx="1.5" fill="#3b82f6"/>
+        <polyline points="7.5,19 15.5,13 24.5,7" stroke="#22c55e" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="7.5"  cy="19" r="1.5" fill="#22c55e"/>
+        <circle cx="15.5" cy="13" r="1.5" fill="#22c55e"/>
+        <circle cx="24.5" cy="7"  r="1.5" fill="#22c55e"/>
+      </svg>
+      Finanzas
+    </div>
+    <div class="hdr-btns">
+      <button class="ibtn" id="btnRefresh" aria-label="Actualizar">
+        <svg id="refreshIcon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M8 16H3v5"/>
+        </svg>
+      </button>
+      <button class="ibtn" id="btnSettings" aria-label="Configuración">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42
+                   M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabsBar"></div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="statusbar">
+      <span><span class="dot spin" id="dot"></span><span id="statusTxt">Cargando...</span></span>
+      <span id="countdown"></span>
+    </div>
+    <div id="main"></div>
+  </div>
+
+</div>
+
+<!-- Settings -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="s-hdr">
+      <span>Configuración</span>
+      <button class="ibtn" id="btnClose" aria-label="Cerrar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6"  y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="s-sec">
+      <div class="s-lbl">ID de la planilla de Google Sheets</div>
+      <input class="inp" id="inpId" placeholder="ID de tu planilla">
+      <div class="s-help">
+        Está en la URL: docs.google.com/spreadsheets/d/<strong>[ID]</strong>/edit<br>
+        La planilla debe estar compartida como <strong>"Cualquiera con el enlace puede ver"</strong>
+      </div>
+    </div>
+
+    <div class="s-sec">
+      <div class="s-lbl">Hojas (pestañas)</div>
+      <div id="slist" class="slist"></div>
+      <div class="add-row">
+        <input class="inp" id="inpName" placeholder="Nombre de la hoja">
+        <input class="inp" id="inpGid"  placeholder="GID">
+        <button class="add-btn" id="btnAdd">+ Agregar</button>
+      </div>
+      <div class="s-help">
+        El GID está en la URL al hacer clic en una pestaña: ...edit?<strong>gid=NÚMERO</strong>
+      </div>
+    </div>
+
+    <div class="s-sec">
+      <div class="s-lbl">Actualización automática</div>
+      <div class="intvl-row">
+        <input class="inp" type="number" id="inpMins" min="1" max="60" placeholder="5">
+        <span>minutos</span>
+      </div>
+    </div>
+
+    <button class="btn-pri" id="btnSave" style="width:100%;padding:13px">
+      Guardar y actualizar
+    </button>
+  </div>
+</div>
+
+<script>
+// ─── Configuración ────────────────────────────────────────────────────────────
+const DEF = {
+  id: '1WQnMC-Nns6xISoLyxAAGtn_GT31z1R8jnoyLmoJY3iA',
+  sheets: [{ name: 'Hoja 1', gid: '0' }],
+  mins: 5
+};
+
+let cfg = (() => {
+  try { return JSON.parse(localStorage.getItem('fin_cfg')) || { ...DEF }; }
+  catch { return { ...DEF }; }
+})();
+
+let activeIdx = 0;
+let cache = {};
+let timer = null;
+let secs  = 0;
+let busy  = false;
+
+// ─── Fetch de Google Sheets (gviz/tq — sin backend, funciona con hojas públicas) ─
+async function loadSheet(gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${cfg.id}/gviz/tq?tqx=out:json&gid=${gid}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const txt = await r.text();
+  const m = txt.match(/setResponse\(([\s\S]+)\);?\s*$/);
+  if (!m) throw new Error('Respuesta inesperada del servidor');
+  const d = JSON.parse(m[1]);
+  if (d.status === 'error') {
+    const e = d.errors?.[0];
+    if (['ACCESS_DENIED','not_signed_in'].includes(e?.reason))
+      throw new Error('La planilla es privada. Compartila con "Cualquiera con el enlace puede ver" y volvé a intentar.');
+    throw new Error(e?.detailed_message || e?.message || 'Error de Google Sheets');
+  }
+  return parseTable(d.table);
+}
+
+function parseTable(t) {
+  if (!t) return { headers: [], rows: [] };
+  const headers = t.cols.map(c => (c.label || c.id || '').trim()).filter(Boolean);
+  const types   = t.cols.map(c => c.type);
+  const rows = (t.rows || []).map(row => {
+    const o = {};
+    headers.forEach((h, i) => {
+      const cell = (row.c || [])[i];
+      o[h] = (cell && cell.v !== null && cell.v !== undefined && cell.v !== '')
+        ? { v: cell.v, d: (cell.f != null ? String(cell.f) : String(cell.v)), t: types[i] }
+        : { v: null, d: '', t: types[i] };
+    });
+    return o;
+  }).filter(r => Object.values(r).some(c => c.d !== ''));
+  return { headers, rows };
+}
+
+// ─── Carga / refresco ─────────────────────────────────────────────────────────
+async function refreshAll() {
+  if (busy) return;
+  busy = true;
+  clearInterval(timer);
+  setStatus('loading');
+
+  await Promise.all(cfg.sheets.map(async s => {
+    try   { cache[s.gid] = await loadSheet(s.gid); }
+    catch (e) { cache[s.gid] = { err: e.message }; }
+  }));
+
+  busy = false;
+  setStatus('ok');
+  renderMain();
+  startTimer();
+}
+
+function startTimer() {
+  secs = cfg.mins * 60;
+  clearInterval(timer);
+  timer = setInterval(() => {
+    secs--;
+    tick();
+    if (secs <= 0) { clearInterval(timer); refreshAll(); }
+  }, 1000);
+  tick();
+}
+
+// ─── Estado ───────────────────────────────────────────────────────────────────
+function setStatus(state) {
+  const dot = document.getElementById('dot');
+  const txt = document.getElementById('statusTxt');
+  const ico = document.getElementById('refreshIcon');
+  dot.className = 'dot' + (state === 'loading' ? ' spin' : state === 'error' ? ' error' : '');
+  if (state === 'loading') {
+    txt.textContent = 'Actualizando...';
+    ico.style.animation = 'rot .7s linear infinite';
+  } else if (state === 'ok') {
+    const t = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    txt.textContent = `Actualizado · ${t}`;
+    ico.style.animation = '';
+  } else {
+    txt.textContent = 'Error al actualizar';
+    ico.style.animation = '';
+  }
+}
+
+function tick() {
+  const el = document.getElementById('countdown');
+  if (secs > 0) {
+    const m = Math.floor(secs / 60), s = secs % 60;
+    el.textContent = `↺ ${m}:${String(s).padStart(2,'0')}`;
+  } else {
+    el.textContent = '';
+  }
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function renderTabs() {
+  const bar = document.getElementById('tabsBar');
+  bar.innerHTML = '';
+  cfg.sheets.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'tab' + (i === activeIdx ? ' on' : '');
+    b.textContent = s.name;
+    b.onclick = () => { activeIdx = i; renderTabs(); renderMain(); };
+    bar.appendChild(b);
+  });
+}
+
+// ─── Contenido principal ──────────────────────────────────────────────────────
+function renderMain() {
+  const el    = document.getElementById('main');
+  const sheet = cfg.sheets[activeIdx];
+  if (!sheet) { el.innerHTML = ''; return; }
+
+  const d = cache[sheet.gid];
+  if (!d) { el.innerHTML = skeletons(); return; }
+
+  if (d.err) {
+    el.innerHTML = `
+      <div class="center">
+        <div class="center-icon">⚠️</div>
+        <div class="center-title">No se pudo cargar</div>
+        <div class="center-sub">${esc(d.err)}</div>
+        <button class="btn-pri" onclick="refreshAll()">Reintentar</button>
+      </div>`;
+    return;
+  }
+
+  if (!d.rows.length) {
+    el.innerHTML = `
+      <div class="center">
+        <div class="center-icon">📋</div>
+        <div class="center-title">Sin datos</div>
+        <div class="center-sub">Esta hoja no tiene filas con información</div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  d.rows.forEach(row => grid.appendChild(buildCard(row, d.headers)));
+  el.appendChild(grid);
+}
+
+function buildCard(row, headers) {
+  // Primera columna → título de la tarjeta
+  const titleKey = headers[0];
+  const title    = row[titleKey]?.d || '—';
+
+  // Última columna numérica → badge en la tarjeta
+  let badge = null;
+  for (let i = headers.length - 1; i >= 0; i--) {
+    const c = row[headers[i]];
+    if (c?.t === 'number' && c.d) { badge = c; break; }
+  }
+
+  const div = document.createElement('div');
+  div.className = 'card';
+
+  // Cabecera de tarjeta
+  const top = document.createElement('div');
+  top.className = 'card-top';
+  const tEl = document.createElement('div');
+  tEl.className = 'card-title';
+  tEl.textContent = title;
+  top.appendChild(tEl);
+
+  if (badge) {
+    const n = Number(badge.v);
+    const p = document.createElement('span');
+    p.className = 'pill ' + (n > 0 ? 'pos' : n < 0 ? 'neg' : 'neu');
+    p.textContent = badge.d;
+    top.appendChild(p);
+  }
+  div.appendChild(top);
+
+  // Cuerpo de la tarjeta
+  const body = document.createElement('div');
+  body.className = 'card-body';
+  let count = 0;
+
+  headers.forEach((k, i) => {
+    if (i === 0) return; // el título ya está arriba
+    const c = row[k];
+    if (!c?.d) return;
+
+    const kv  = document.createElement('div');
+    kv.className = 'kv';
+    const kEl = document.createElement('span');
+    kEl.className = 'kv-k';
+    kEl.textContent = k;
+    const vEl = document.createElement('span');
+    const n   = Number(c.v);
+    vEl.className = 'kv-v' + (c.t === 'number'
+      ? ' num' + (n > 0 ? ' pos' : n < 0 ? ' neg' : '')
+      : '');
+    vEl.textContent = c.d;
+    kv.appendChild(kEl);
+    kv.appendChild(vEl);
+    body.appendChild(kv);
+    count++;
+  });
+
+  if (count) div.appendChild(body);
+  return div;
+}
+
+function skeletons() {
+  return Array(5).fill(0).map(() => `
+    <div class="sk-card">
+      <div class="sk" style="width:55%"></div>
+      <div class="sk" style="width:100%"></div>
+      <div class="sk" style="width:80%"></div>
+      <div class="sk" style="width:68%"></div>
+    </div>`).join('');
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Configuración (panel) ────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('inpId').value   = cfg.id;
+  document.getElementById('inpMins').value = cfg.mins;
+  renderSheetList();
+  document.getElementById('overlay').classList.add('on');
+}
+function closeSettings() {
+  document.getElementById('overlay').classList.remove('on');
+}
+function renderSheetList() {
+  const list = document.getElementById('slist');
+  list.innerHTML = '';
+  cfg.sheets.forEach((s, i) => {
+    const item = document.createElement('div');
+    item.className = 'sitem';
+    item.innerHTML = `
+      <div class="sitem-info">
+        <div class="sitem-name">${esc(s.name)}</div>
+        <div class="sitem-gid">GID: ${esc(s.gid)}</div>
+      </div>
+      <button class="del-btn" onclick="removeSheet(${i})" aria-label="Eliminar">×</button>`;
+    list.appendChild(item);
+  });
+}
+function removeSheet(i) {
+  cfg.sheets.splice(i, 1);
+  renderSheetList();
+}
+function addSheet() {
+  const name = document.getElementById('inpName').value.trim();
+  const gid  = document.getElementById('inpGid').value.trim();
+  if (!name || !gid) { alert('Completá el nombre y el GID'); return; }
+  cfg.sheets.push({ name, gid });
+  document.getElementById('inpName').value = '';
+  document.getElementById('inpGid').value  = '';
+  renderSheetList();
+}
+function saveAndRefresh() {
+  const newId = document.getElementById('inpId').value.trim();
+  if (!newId) { alert('El ID de la planilla no puede estar vacío'); return; }
+  if (!cfg.sheets.length) { alert('Agregá al menos una hoja'); return; }
+  cfg.id   = newId;
+  cfg.mins = Math.max(1, parseInt(document.getElementById('inpMins').value) || 5);
+  localStorage.setItem('fin_cfg', JSON.stringify(cfg));
+  closeSettings();
+  cache = {};
+  activeIdx = 0;
+  renderTabs();
+  refreshAll();
+}
+
+// ─── Eventos ──────────────────────────────────────────────────────────────────
+document.getElementById('btnRefresh').addEventListener('click', refreshAll);
+document.getElementById('btnSettings').addEventListener('click', openSettings);
+document.getElementById('btnClose').addEventListener('click', closeSettings);
+document.getElementById('btnAdd').addEventListener('click', addSheet);
+document.getElementById('btnSave').addEventListener('click', saveAndRefresh);
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+document.getElementById('inpGid').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addSheet();
+});
+
+// ─── Service Worker ───────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ─── Inicio ───────────────────────────────────────────────────────────────────
+renderTabs();
+renderMain();
+refreshAll();
+</script>
+</body>
+</html>

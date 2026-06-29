@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <!-- Barras del gráfico -->
+  <rect x="80"  y="336" width="80" height="112" rx="12" fill="#3b82f6"/>
+  <rect x="216" y="240" width="80" height="208" rx="12" fill="#3b82f6"/>
+  <rect x="352" y="144" width="80" height="304" rx="12" fill="#3b82f6"/>
+  <!-- Línea de tendencia -->
+  <polyline points="120,312 256,216 392,120"
+    stroke="#22c55e" stroke-width="18"
+    stroke-linecap="round" stroke-linejoin="round"
+    fill="none"/>
+  <!-- Puntos de la línea -->
+  <circle cx="120" cy="312" r="18" fill="#22c55e"/>
+  <circle cx="256" cy="216" r="18" fill="#22c55e"/>
+  <circle cx="392" cy="120" r="18" fill="#22c55e"/>
+  <!-- Signo $ en el ángulo superior izquierdo -->
+  <text x="68" y="168" font-family="system-ui, sans-serif" font-size="120"
+    font-weight="700" fill="rgba(255,255,255,0.12)">$</text>
+</svg>
