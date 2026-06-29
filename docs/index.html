@@ -707,7 +707,9 @@ function renderMain() {
     return;
   }
 
-  const filtered = filterRows(d.rows, d.headers, searchQ);
+  // Solo filas que tengan valor en la columna "Contenedor"
+  const withContenedor = d.rows.filter(row => row['Contenedor']?.d);
+  const filtered = filterRows(withContenedor, d.headers, searchQ);
 
   if (searchQ && filtered.length === 0) {
     rEl.classList.remove('show');
