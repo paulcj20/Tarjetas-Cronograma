@@ -189,6 +189,20 @@
     .kv-v.num { font-variant-numeric: tabular-nums; }
     .kv-v mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
 
+    /* ── Header extras (Fecha / Contenedor chips) ── */
+    .card-meta {
+      display: flex; gap: 5px; flex-wrap: wrap;
+      padding: 5px 14px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .meta-chip {
+      font-size: 11px; font-weight: 600;
+      padding: 2px 9px; border-radius: 20px;
+    }
+    .meta-chip.fecha      { background: rgba(234,179,8,.15);  color: var(--yellow);  }
+    .meta-chip.contenedor { background: rgba(59,130,246,.15); color: var(--primary); }
+    .meta-chip.gen        { background: var(--surf2);         color: var(--muted);   }
+
     /* ── Copia ── */
     .kv { cursor: pointer; border-radius: 6px; margin: 0 -4px; padding: 0 4px; transition: background .12s; }
     .kv:active { background: var(--surf2); }
@@ -424,7 +438,8 @@ const DEF = {
   id: '1WQnMC-Nns6xISoLyxAAGtn_GT31z1R8jnoyLmoJY3iA',
   sheets: [
     { name: 'FORD',    tab: 'FORD'    },
-    { name: 'PEUGEOT', tab: 'PEUGEOT' }
+    { name: 'PEUGEOT', tab: 'PEUGEOT' },
+    { name: 'Estado',  tab: 'Estado',  id: '121UueMo_SABwg2VE7m6Js-ctDxyfaiyt1OrS10wRZGo' }
   ],
   mins: 5
 };
@@ -455,8 +470,39 @@ let suggestions = [];       // pool de autocompletado
 // ─── Personalización de columnas ──────────────────────────────────────────────
 // Columnas a renombrar en pantalla (nombre en Sheets → nombre a mostrar)
 const COLUMN_ALIASES = { 'P': 'Verifica', 'V': 'Mensaje' };
-// Columnas a ocultar completamente en las tarjetas
+// Columnas a ocultar completamente en las tarjetas (fallback global)
 const HIDDEN_COLUMNS = new Set(['S', 'T', 'U']);
+
+// Configuración por hoja: columnas visibles/ocultas, chips de cabecera, filtros de fila
+const SHEET_CONFIG = {
+  'FORD': {
+    hiddenCols:   new Set(['P', 'Q', 'S', 'T', 'U']),
+    headerExtras: [
+      { key: 'Fecha',      cls: 'fecha'      },
+      { key: 'Contenedor', cls: 'contenedor' }
+    ],
+    filterRequired: 'Contenedor',
+  },
+  'PEUGEOT': {
+    visibleCols:  new Set(['A','B','C','D','E','F','G','H','I','J','N','U']),
+    headerExtras: [
+      { key: 'Fecha',      cls: 'fecha'      },
+      { key: 'Contenedor', cls: 'contenedor' }
+    ],
+    filterRequired: 'Contenedor',
+  },
+  'Estado': {
+    visibleCols: new Set(['B','C','D','E','F','G']),
+    filterCol:   'H',
+    filterVal:   'Citado',
+  }
+};
+
+function isColVisible(k, scfg) {
+  if (scfg?.visibleCols) return scfg.visibleCols.has(k);
+  if (scfg?.hiddenCols)  return !scfg.hiddenCols.has(k);
+  return !HIDDEN_COLUMNS.has(k);
+}
 
 function displayLabel(header) {
   return COLUMN_ALIASES[header] ?? header;
@@ -493,8 +539,9 @@ function norm(s) {
 // ─── Fetch ───────────────────────────────────────────────────────────────────
 // Usa &sheet=NOMBRE (nombre exacto de la pestaña), no el GID numérico.
 // Esto garantiza cargar la hoja correcta sin importar el orden.
-async function loadSheet(tab) {
-  const url = `https://docs.google.com/spreadsheets/d/${cfg.id}/gviz/tq`
+async function loadSheet(tab, sheetId) {
+  const id  = sheetId || cfg.id;
+  const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq`
             + `?tqx=out:json&sheet=${encodeURIComponent(tab)}`;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -538,7 +585,7 @@ async function refreshAll() {
   setStatus('loading');
 
   await Promise.all(cfg.sheets.map(async s => {
-    try   { cache[s.tab] = await loadSheet(s.tab); }
+    try   { cache[s.tab] = await loadSheet(s.tab, s.id); }
     catch (e) { cache[s.tab] = { err: e.message }; }
   }));
 
@@ -707,9 +754,15 @@ function renderMain() {
     return;
   }
 
-  // Solo filas que tengan valor en la columna "Contenedor"
-  const withContenedor = d.rows.filter(row => row['Contenedor']?.d);
-  const filtered = filterRows(withContenedor, d.headers, searchQ);
+  // Filtro de filas según config por hoja
+  const scfg = SHEET_CONFIG[sheet.tab];
+  let rows = d.rows;
+  if (scfg?.filterRequired) {
+    rows = rows.filter(row => row[scfg.filterRequired]?.d);
+  } else if (scfg?.filterCol && scfg?.filterVal) {
+    rows = rows.filter(row => row[scfg.filterCol]?.d === scfg.filterVal);
+  }
+  const filtered = filterRows(rows, d.headers, searchQ);
 
   if (searchQ && filtered.length === 0) {
     rEl.classList.remove('show');
@@ -744,19 +797,23 @@ function renderMain() {
   el.innerHTML = '';
   const grid = document.createElement('div');
   grid.className = 'grid';
-  filtered.forEach(row => grid.appendChild(buildCard(row, d.headers)));
+  filtered.forEach(row => grid.appendChild(buildCard(row, d.headers, sheet.tab)));
   el.appendChild(grid);
 }
 
-function buildCard(row, headers) {
+function buildCard(row, headers, sheetTab) {
+  const scfg     = SHEET_CONFIG[sheetTab] || {};
+  const extras   = scfg.headerExtras || [];
+  const extraKeys = new Set(extras.map(ex => ex.key));
+
   const titleKey = headers[0];
   const titleRaw = row[titleKey]?.d || '—';
 
-  // Badge: última columna numérica visible
+  // Badge: última columna numérica visible (excluye extras del header)
   let badge = null;
   for (let i = headers.length - 1; i >= 0; i--) {
     const k = headers[i];
-    if (HIDDEN_COLUMNS.has(k)) continue;
+    if (!isColVisible(k, scfg) || extraKeys.has(k)) continue;
     const c = row[k];
     if (c?.t === 'number' && c.d) { badge = c; break; }
   }
@@ -798,14 +855,33 @@ function buildCard(row, headers) {
   }
   div.appendChild(top);
 
+  // Chips de cabecera: Fecha y Contenedor con colores distintivos
+  if (extras.length) {
+    const hasAny = extras.some(ex => row[ex.key]?.d);
+    if (hasAny) {
+      const meta = document.createElement('div');
+      meta.className = 'card-meta';
+      extras.forEach(ex => {
+        const val = row[ex.key]?.d;
+        if (!val) return;
+        const chip = document.createElement('span');
+        chip.className = `meta-chip ${ex.cls}`;
+        chip.textContent = val;
+        meta.appendChild(chip);
+      });
+      div.appendChild(meta);
+    }
+  }
+
   // Cuerpo — cada fila es tappable para copiar el valor
   const body = document.createElement('div');
   body.className = 'card-body';
   let count = 0;
 
   headers.forEach((k, i) => {
-    if (i === 0) return;                  // título ya está arriba
-    if (HIDDEN_COLUMNS.has(k)) return;    // columnas ocultas
+    if (i === 0) return;                       // título ya está arriba
+    if (!isColVisible(k, scfg)) return;        // columnas ocultas / no visibles
+    if (extraKeys.has(k)) return;              // ya mostrado en chips de cabecera
     const c = row[k];
     if (!c?.d) return;
 
@@ -816,7 +892,7 @@ function buildCard(row, headers) {
 
     const kEl = document.createElement('span');
     kEl.className = 'kv-k';
-    kEl.textContent = displayLabel(k);   // aplica alias de columna
+    kEl.textContent = displayLabel(k);
 
     const vEl = document.createElement('span');
     const n   = Number(c.v);
