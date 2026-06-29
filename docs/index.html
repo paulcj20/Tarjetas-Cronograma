@@ -41,9 +41,7 @@
 
     /* ── Header ── */
     .hdr {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
       padding: 12px 16px;
       padding-top: max(12px, env(safe-area-inset-top));
       background: var(--surf);
@@ -51,99 +49,130 @@
       flex-shrink: 0;
     }
     .hdr-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
     }
     .hdr-logo svg { width: 32px; height: 32px; flex-shrink: 0; }
     .hdr-btns { display: flex; gap: 6px; }
     .ibtn {
       width: 38px; height: 38px;
       border: none; border-radius: 10px;
-      background: var(--surf2);
-      color: var(--text);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      background: var(--surf2); color: var(--text);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: opacity .15s;
     }
     .ibtn:active { opacity: .6; }
 
     /* ── Tabs ── */
     .tabs {
-      display: flex;
-      overflow-x: auto;
-      background: var(--surf);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
+      display: flex; overflow-x: auto;
+      background: var(--surf); border-bottom: 1px solid var(--border);
+      flex-shrink: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none;
     }
     .tabs::-webkit-scrollbar { display: none; }
     .tabs:empty { display: none; }
     .tab {
-      padding: 11px 18px;
-      font-size: 13px; font-weight: 500;
-      color: var(--muted);
-      border: none; background: none;
-      cursor: pointer;
-      white-space: nowrap;
+      padding: 11px 18px; font-size: 13px; font-weight: 500;
+      color: var(--muted); border: none; background: none;
+      cursor: pointer; white-space: nowrap;
       border-bottom: 2px solid transparent;
       transition: color .15s, border-color .15s;
     }
     .tab.on { color: var(--primary); border-bottom-color: var(--primary); }
 
+    /* ── Buscador ── */
+    .search-wrap {
+      position: relative;
+      padding: 10px 12px 0;
+      flex-shrink: 0;
+    }
+    .search-inp {
+      width: 100%; background: var(--surf);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 36px 10px 38px;
+      color: var(--text); font-size: 14px; outline: none;
+      transition: border-color .15s;
+      -webkit-appearance: none;
+    }
+    .search-inp:focus { border-color: var(--primary); }
+    .search-inp::placeholder { color: var(--dim); }
+    .search-icon {
+      position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+      color: var(--dim); pointer-events: none; display: flex; align-items: center;
+    }
+    .search-clear {
+      position: absolute; right: 22px; top: 50%; transform: translateY(-50%);
+      width: 22px; height: 22px; border: none; background: var(--surf2);
+      color: var(--muted); font-size: 14px; border-radius: 50%;
+      cursor: pointer; display: none; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .search-clear.show { display: flex; }
+
+    /* Autocomplete */
+    .ac-list {
+      position: absolute; left: 12px; right: 12px; top: calc(100% + 2px);
+      background: var(--surf); border: 1px solid var(--surf2);
+      border-radius: 12px; overflow: hidden; z-index: 50; display: none;
+      box-shadow: 0 8px 28px rgba(0,0,0,.5);
+      max-height: 220px; overflow-y: auto;
+    }
+    .ac-list.show { display: block; }
+    .ac-item {
+      padding: 11px 14px; font-size: 13px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:active { background: var(--surf2); }
+    .ac-item mark { background: none; color: var(--primary); font-weight: 700; }
+    .ac-icon { color: var(--dim); flex-shrink: 0; }
+
     /* ── Status ── */
     .statusbar {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 16px 10px;
-      font-size: 11px; color: var(--dim);
+      padding: 6px 16px 8px; font-size: 11px; color: var(--dim);
     }
     .dot {
-      display: inline-block;
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: var(--green);
-      margin-right: 5px;
-      vertical-align: middle;
+      display: inline-block; width: 5px; height: 5px;
+      border-radius: 50%; background: var(--green);
+      margin-right: 5px; vertical-align: middle;
     }
     .dot.spin  { background: var(--yellow); animation: blink .8s infinite; }
     .dot.error { background: var(--red); }
     @keyframes blink { 50% { opacity: 0; } }
     @keyframes rot   { to { transform: rotate(360deg); } }
 
+    /* Contador de resultados */
+    .result-count {
+      font-size: 11px; color: var(--muted);
+      padding: 0 16px 4px; display: none;
+    }
+    .result-count.show { display: block; }
+
     /* ── Content ── */
     .content {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
       padding: 0 12px;
       padding-bottom: max(16px, env(safe-area-inset-bottom));
     }
 
-    /* ── Grid de tarjetas ── */
-    .grid { display: grid; gap: 10px; padding-top: 4px; }
+    /* ── Grid ── */
+    .grid { display: grid; gap: 10px; padding-top: 8px; }
     @media (min-width: 540px) { .grid { grid-template-columns: repeat(2,1fr); } }
     @media (min-width: 900px) { .grid { grid-template-columns: repeat(3,1fr); } }
 
     /* ── Tarjeta ── */
-    .card {
-      background: var(--surf);
-      border-radius: var(--r);
-      border: 1px solid var(--border);
-      overflow: hidden;
-    }
+    .card { background: var(--surf); border-radius: var(--r); border: 1px solid var(--border); overflow: hidden; }
     .card-top {
-      padding: 13px 14px 9px;
-      border-bottom: 1px solid var(--border);
+      padding: 13px 14px 9px; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
     .card-title {
       font-size: 14px; font-weight: 600;
       flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
+    .card-title mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
     .pill {
       font-size: 11px; font-weight: 600;
       padding: 3px 9px; border-radius: 20px; flex-shrink: 0;
@@ -151,17 +180,41 @@
     .pill.pos { background: rgba(34,197,94,.15); color: var(--green); }
     .pill.neg { background: rgba(239,68,68,.15);  color: var(--red); }
     .pill.neu { background: var(--surf2); color: var(--muted); }
-
     .card-body { padding: 10px 14px 13px; display: flex; flex-direction: column; gap: 7px; }
     .kv { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .kv-k {
-      font-size: 12px; color: var(--muted); flex-shrink: 0;
-      max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
+    .kv-k { font-size: 12px; color: var(--muted); flex-shrink: 0; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .kv-v { font-size: 13px; font-weight: 500; text-align: right; word-break: break-word; }
     .kv-v.pos { color: var(--green); }
     .kv-v.neg { color: var(--red); }
     .kv-v.num { font-variant-numeric: tabular-nums; }
+    .kv-v mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
+
+    /* ── Copia ── */
+    .kv { cursor: pointer; border-radius: 6px; margin: 0 -4px; padding: 0 4px; transition: background .12s; }
+    .kv:active { background: var(--surf2); }
+    .card-title-wrap { display: flex; align-items: center; gap: 6px; flex: 1; overflow: hidden; }
+    .copy-hint {
+      opacity: 0; flex-shrink: 0;
+      transition: opacity .15s;
+      color: var(--dim);
+      display: flex; align-items: center;
+    }
+    .card-top:hover .copy-hint,
+    .card-top:focus-within .copy-hint { opacity: 1; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%) translateY(6px);
+      background: var(--surf2); color: var(--text);
+      padding: 8px 18px; border-radius: 20px;
+      font-size: 13px; font-weight: 500; white-space: nowrap;
+      pointer-events: none; opacity: 0; z-index: 400;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      transition: opacity .18s, transform .18s;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     /* ── Skeleton ── */
     .sk-card {
@@ -171,12 +224,11 @@
     .sk {
       border-radius: 6px; height: 13px;
       background: linear-gradient(90deg, var(--surf2) 25%, var(--dim) 50%, var(--surf2) 75%);
-      background-size: 300% 100%;
-      animation: sh 1.4s infinite;
+      background-size: 300% 100%; animation: sh 1.4s infinite;
     }
     @keyframes sh { to { background-position: -200% 0; } }
 
-    /* ── Error / empty ── */
+    /* ── Empty / Error ── */
     .center {
       display: flex; flex-direction: column; align-items: center;
       text-align: center; padding: 60px 24px; gap: 12px;
@@ -186,81 +238,53 @@
     .center-sub { font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 300px; }
     .btn-pri {
       padding: 11px 24px; border: none; border-radius: 10px;
-      background: var(--primary); color: #fff;
-      font-size: 14px; font-weight: 600; cursor: pointer;
+      background: var(--primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
     }
 
     /* ── Settings overlay ── */
     .overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.65);
-      z-index: 200;
+      position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200;
       display: flex; align-items: flex-end;
-      opacity: 0; pointer-events: none;
-      transition: opacity .25s;
+      opacity: 0; pointer-events: none; transition: opacity .25s;
     }
     .overlay.on { opacity: 1; pointer-events: all; }
-    .sheet {
+    .ssheet {
       background: var(--surf); width: 100%;
-      border-radius: 20px 20px 0 0;
-      max-height: 90vh; overflow-y: auto;
+      border-radius: 20px 20px 0 0; max-height: 90vh; overflow-y: auto;
       padding: 8px 16px 20px;
       padding-bottom: max(24px, env(safe-area-inset-bottom));
       transform: translateY(100%);
       transition: transform .3s cubic-bezier(.32,.72,0,1);
     }
-    .overlay.on .sheet { transform: none; }
-    .handle {
-      width: 36px; height: 4px; background: var(--surf2);
-      border-radius: 2px; margin: 12px auto 16px;
-    }
-    .s-hdr {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 20px;
-    }
+    .overlay.on .ssheet { transform: none; }
+    .handle { width: 36px; height: 4px; background: var(--surf2); border-radius: 2px; margin: 12px auto 16px; }
+    .s-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .s-hdr span { font-size: 17px; font-weight: 700; }
     .s-sec { margin-bottom: 20px; }
-    .s-lbl {
-      font-size: 11px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: .07em;
-      color: var(--muted); margin-bottom: 8px;
-    }
+    .s-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 8px; }
     .s-help { font-size: 11px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
     .inp {
-      width: 100%; background: var(--surf2);
-      border: 1px solid transparent; border-radius: 10px;
-      padding: 11px 13px; color: var(--text); font-size: 14px; outline: none;
-      transition: border-color .15s;
+      width: 100%; background: var(--surf2); border: 1px solid transparent; border-radius: 10px;
+      padding: 11px 13px; color: var(--text); font-size: 14px; outline: none; transition: border-color .15s;
     }
     .inp:focus { border-color: var(--primary); }
     .inp::placeholder { color: var(--dim); }
-
     .slist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-    .sitem {
-      display: flex; align-items: center;
-      background: var(--surf2); border-radius: 10px;
-      padding: 11px 12px; gap: 10px;
-    }
+    .sitem { display: flex; align-items: center; background: var(--surf2); border-radius: 10px; padding: 11px 12px; gap: 10px; }
     .sitem-info { flex: 1; overflow: hidden; }
     .sitem-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sitem-gid  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .sitem-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .del-btn {
-      width: 28px; height: 28px;
-      border: none; border-radius: 8px;
+      width: 28px; height: 28px; border: none; border-radius: 8px;
       background: rgba(239,68,68,.15); color: var(--red);
       cursor: pointer; font-size: 18px; line-height: 1;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .add-row {
-      display: grid;
-      grid-template-columns: 1fr 80px auto;
-      gap: 8px; align-items: center;
-    }
+    .add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
     .add-btn {
-      height: 42px; padding: 0 14px;
-      background: var(--primary); color: #fff;
-      border: none; border-radius: 10px;
-      font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+      height: 42px; padding: 0 14px; background: var(--primary); color: #fff;
+      border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
     }
     .intvl-row { display: flex; align-items: center; gap: 10px; }
     .intvl-row .inp { width: 80px; }
@@ -310,20 +334,39 @@
   <!-- Tabs -->
   <div class="tabs" id="tabsBar"></div>
 
+  <!-- Buscador -->
+  <div class="search-wrap">
+    <span class="search-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </span>
+    <input class="search-inp" id="searchInp"
+      placeholder="Buscar en todas las columnas..."
+      autocomplete="off" spellcheck="false" type="search">
+    <button class="search-clear" id="searchClear" aria-label="Limpiar">✕</button>
+    <ul class="ac-list" id="acList"></ul>
+  </div>
+
   <!-- Content -->
   <div class="content">
     <div class="statusbar">
       <span><span class="dot spin" id="dot"></span><span id="statusTxt">Cargando...</span></span>
       <span id="countdown"></span>
     </div>
+    <div class="result-count" id="resultCount"></div>
     <div id="main"></div>
   </div>
 
 </div>
 
+<!-- Toast de copiado -->
+<div class="toast" id="toast"></div>
+
 <!-- Settings -->
 <div class="overlay" id="overlay">
-  <div class="sheet">
+  <div class="ssheet">
     <div class="handle"></div>
     <div class="s-hdr">
       <span>Configuración</span>
@@ -340,7 +383,7 @@
       <div class="s-lbl">ID de la planilla de Google Sheets</div>
       <input class="inp" id="inpId" placeholder="ID de tu planilla">
       <div class="s-help">
-        Está en la URL: docs.google.com/spreadsheets/d/<strong>[ID]</strong>/edit<br>
+        URL: docs.google.com/spreadsheets/d/<strong>[ID]</strong>/edit<br>
         La planilla debe estar compartida como <strong>"Cualquiera con el enlace puede ver"</strong>
       </div>
     </div>
@@ -349,12 +392,13 @@
       <div class="s-lbl">Hojas (pestañas)</div>
       <div id="slist" class="slist"></div>
       <div class="add-row">
-        <input class="inp" id="inpName" placeholder="Nombre de la hoja">
-        <input class="inp" id="inpGid"  placeholder="GID">
+        <input class="inp" id="inpName" placeholder="Nombre en la app">
+        <input class="inp" id="inpTab"  placeholder="Nombre exacto en Sheets">
         <button class="add-btn" id="btnAdd">+ Agregar</button>
       </div>
       <div class="s-help">
-        El GID está en la URL al hacer clic en una pestaña: ...edit?<strong>gid=NÚMERO</strong>
+        <strong>Nombre exacto en Sheets</strong>: el texto que aparece en la pestaña
+        de tu planilla (ej: <em>FORD</em>, <em>PEUGEOT</em>). Respeta mayúsculas.
       </div>
     </div>
 
@@ -373,27 +417,85 @@
 </div>
 
 <script>
-// ─── Configuración ────────────────────────────────────────────────────────────
+// ─── Config ───────────────────────────────────────────────────────────────────
+// sheets: [{ name: 'Nombre en app', tab: 'Nombre exacto pestaña en Sheets' }]
+// "tab" se usa con &sheet=TAB en la API, más fiable que el GID numérico.
 const DEF = {
   id: '1WQnMC-Nns6xISoLyxAAGtn_GT31z1R8jnoyLmoJY3iA',
-  sheets: [{ name: 'Hoja 1', gid: '0' }],
+  sheets: [
+    { name: 'FORD',    tab: 'FORD'    },
+    { name: 'PEUGEOT', tab: 'PEUGEOT' }
+  ],
   mins: 5
 };
 
 let cfg = (() => {
-  try { return JSON.parse(localStorage.getItem('fin_cfg')) || { ...DEF }; }
-  catch { return { ...DEF }; }
+  try {
+    const saved = JSON.parse(localStorage.getItem('fin_cfg'));
+    if (!saved) return { ...DEF };
+    // Migración: si hojas viejas usan "gid" en lugar de "tab", convertir
+    if (saved.sheets) {
+      saved.sheets = saved.sheets.map(s => ({
+        name: s.name,
+        tab: s.tab || s.name  // fallback: usar el nombre como tab
+      }));
+    }
+    return saved;
+  } catch { return { ...DEF }; }
 })();
 
-let activeIdx = 0;
-let cache = {};
-let timer = null;
-let secs  = 0;
-let busy  = false;
+let activeIdx  = 0;
+let cache      = {};        // clave: s.tab
+let timer      = null;
+let secs       = 0;
+let busy       = false;
+let searchQ    = '';        // query activa
+let suggestions = [];       // pool de autocompletado
 
-// ─── Fetch de Google Sheets (gviz/tq — sin backend, funciona con hojas públicas) ─
-async function loadSheet(gid) {
-  const url = `https://docs.google.com/spreadsheets/d/${cfg.id}/gviz/tq?tqx=out:json&gid=${gid}`;
+// ─── Personalización de columnas ──────────────────────────────────────────────
+// Columnas a renombrar en pantalla (nombre en Sheets → nombre a mostrar)
+const COLUMN_ALIASES = { 'P': 'Verifica', 'V': 'Mensaje' };
+// Columnas a ocultar completamente en las tarjetas
+const HIDDEN_COLUMNS = new Set(['S', 'T', 'U']);
+
+function displayLabel(header) {
+  return COLUMN_ALIASES[header] ?? header;
+}
+
+// ─── Copia al portapapeles ────────────────────────────────────────────────────
+let toastTimer = null;
+function copyToClipboard(text) {
+  const doToast = () => {
+    const el = document.getElementById('toast');
+    el.textContent = '¡Copiado!';
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(doToast).catch(doToast);
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+    doToast();
+  }
+}
+
+// ─── Normalización para búsqueda ─────────────────────────────────────────────
+function norm(s) {
+  return String(s).toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// ─── Fetch ───────────────────────────────────────────────────────────────────
+// Usa &sheet=NOMBRE (nombre exacto de la pestaña), no el GID numérico.
+// Esto garantiza cargar la hoja correcta sin importar el orden.
+async function loadSheet(tab) {
+  const url = `https://docs.google.com/spreadsheets/d/${cfg.id}/gviz/tq`
+            + `?tqx=out:json&sheet=${encodeURIComponent(tab)}`;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const txt = await r.text();
@@ -403,7 +505,9 @@ async function loadSheet(gid) {
   if (d.status === 'error') {
     const e = d.errors?.[0];
     if (['ACCESS_DENIED','not_signed_in'].includes(e?.reason))
-      throw new Error('La planilla es privada. Compartila con "Cualquiera con el enlace puede ver" y volvé a intentar.');
+      throw new Error('Planilla privada — compartila con "Cualquiera con el enlace puede ver"');
+    if (e?.reason === 'invalid_query')
+      throw new Error(`No se encontró la pestaña "${tab}". Verificá que el nombre sea exacto (mayúsculas incluidas).`);
     throw new Error(e?.detailed_message || e?.message || 'Error de Google Sheets');
   }
   return parseTable(d.table);
@@ -418,7 +522,7 @@ function parseTable(t) {
     headers.forEach((h, i) => {
       const cell = (row.c || [])[i];
       o[h] = (cell && cell.v !== null && cell.v !== undefined && cell.v !== '')
-        ? { v: cell.v, d: (cell.f != null ? String(cell.f) : String(cell.v)), t: types[i] }
+        ? { v: cell.v, d: cell.f != null ? String(cell.f) : String(cell.v), t: types[i] }
         : { v: null, d: '', t: types[i] };
     });
     return o;
@@ -426,7 +530,7 @@ function parseTable(t) {
   return { headers, rows };
 }
 
-// ─── Carga / refresco ─────────────────────────────────────────────────────────
+// ─── Refresco ─────────────────────────────────────────────────────────────────
 async function refreshAll() {
   if (busy) return;
   busy = true;
@@ -434,12 +538,13 @@ async function refreshAll() {
   setStatus('loading');
 
   await Promise.all(cfg.sheets.map(async s => {
-    try   { cache[s.gid] = await loadSheet(s.gid); }
-    catch (e) { cache[s.gid] = { err: e.message }; }
+    try   { cache[s.tab] = await loadSheet(s.tab); }
+    catch (e) { cache[s.tab] = { err: e.message }; }
   }));
 
   busy = false;
   setStatus('ok');
+  buildSuggestions();
   renderMain();
   startTimer();
 }
@@ -497,16 +602,101 @@ function renderTabs() {
   });
 }
 
-// ─── Contenido principal ──────────────────────────────────────────────────────
+// ─── Búsqueda ─────────────────────────────────────────────────────────────────
+function buildSuggestions() {
+  const seen = new Set();
+  suggestions = [];
+  cfg.sheets.forEach(s => {
+    const d = cache[s.tab];
+    if (!d || d.err) return;
+    d.rows.forEach(row => {
+      d.headers.forEach(h => {
+        const v = row[h]?.d;
+        if (v && v.length > 1 && v.length < 60 && !seen.has(v)) {
+          seen.add(v);
+          suggestions.push(v);
+        }
+      });
+    });
+  });
+}
+
+function filterRows(rows, headers, q) {
+  if (!q) return rows;
+  const nq = norm(q);
+  return rows.filter(row =>
+    headers.some(h => norm(row[h]?.d || '').includes(nq))
+  );
+}
+
+function highlightText(text, q) {
+  if (!q) return esc(text);
+  const nq = norm(q);
+  const nt = norm(text);
+  const idx = nt.indexOf(nq);
+  if (idx === -1) return esc(text);
+  return esc(text.slice(0, idx))
+    + '<mark>' + esc(text.slice(idx, idx + q.length)) + '</mark>'
+    + esc(text.slice(idx + q.length));
+}
+
+let acTimer = null;
+function onSearchInput(q) {
+  searchQ = q.trim();
+  const clear = document.getElementById('searchClear');
+  clear.classList.toggle('show', searchQ !== '');
+  renderMain();
+
+  clearTimeout(acTimer);
+  acTimer = setTimeout(() => showAutocomplete(q), 80);
+}
+
+function showAutocomplete(q) {
+  const list = document.getElementById('acList');
+  if (!q || q.length < 1) { list.classList.remove('show'); return; }
+  const nq = norm(q);
+  const hits = suggestions
+    .filter(v => norm(v).includes(nq) && norm(v) !== nq)
+    .slice(0, 7);
+  if (!hits.length) { list.classList.remove('show'); return; }
+  list.innerHTML = hits.map(v => {
+    const nv = norm(v);
+    const i  = nv.indexOf(nq);
+    const hl = i === -1 ? esc(v)
+      : esc(v.slice(0,i)) + '<mark>' + esc(v.slice(i, i+q.length)) + '</mark>' + esc(v.slice(i+q.length));
+    return `<li class="ac-item" onclick="selectAC('${v.replace(/'/g,"\\'")}')">`
+      + `<svg class="ac-icon" width="12" height="12" viewBox="0 0 24 24" fill="none"`
+      + ` stroke="currentColor" stroke-width="2" stroke-linecap="round">`
+      + `<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`
+      + hl + `</li>`;
+  }).join('');
+  list.classList.add('show');
+}
+
+function selectAC(v) {
+  document.getElementById('searchInp').value = v;
+  document.getElementById('acList').classList.remove('show');
+  onSearchInput(v);
+}
+
+function clearSearch() {
+  document.getElementById('searchInp').value = '';
+  document.getElementById('acList').classList.remove('show');
+  onSearchInput('');
+}
+
+// ─── Render principal ─────────────────────────────────────────────────────────
 function renderMain() {
   const el    = document.getElementById('main');
+  const rEl   = document.getElementById('resultCount');
   const sheet = cfg.sheets[activeIdx];
-  if (!sheet) { el.innerHTML = ''; return; }
+  if (!sheet) { el.innerHTML = ''; rEl.classList.remove('show'); return; }
 
-  const d = cache[sheet.gid];
-  if (!d) { el.innerHTML = skeletons(); return; }
+  const d = cache[sheet.tab];
+  if (!d) { el.innerHTML = skeletons(); rEl.classList.remove('show'); return; }
 
   if (d.err) {
+    rEl.classList.remove('show');
     el.innerHTML = `
       <div class="center">
         <div class="center-icon">⚠️</div>
@@ -517,7 +707,23 @@ function renderMain() {
     return;
   }
 
-  if (!d.rows.length) {
+  // Solo filas que tengan valor en la columna "Contenedor"
+  const withContenedor = d.rows.filter(row => row['Contenedor']?.d);
+  const filtered = filterRows(withContenedor, d.headers, searchQ);
+
+  if (searchQ && filtered.length === 0) {
+    rEl.classList.remove('show');
+    el.innerHTML = `
+      <div class="center">
+        <div class="center-icon">🔍</div>
+        <div class="center-title">Sin resultados</div>
+        <div class="center-sub">No hay coincidencias para "<strong>${esc(searchQ)}</strong>" en esta hoja</div>
+      </div>`;
+    return;
+  }
+
+  if (!searchQ && d.rows.length === 0) {
+    rEl.classList.remove('show');
     el.innerHTML = `
       <div class="center">
         <div class="center-icon">📋</div>
@@ -527,35 +733,61 @@ function renderMain() {
     return;
   }
 
+  // Contador de resultados (solo cuando hay búsqueda activa)
+  if (searchQ) {
+    rEl.textContent = `${filtered.length} resultado${filtered.length !== 1 ? 's' : ''} en "${sheet.name}"`;
+    rEl.classList.add('show');
+  } else {
+    rEl.classList.remove('show');
+  }
+
   el.innerHTML = '';
   const grid = document.createElement('div');
   grid.className = 'grid';
-  d.rows.forEach(row => grid.appendChild(buildCard(row, d.headers)));
+  filtered.forEach(row => grid.appendChild(buildCard(row, d.headers)));
   el.appendChild(grid);
 }
 
 function buildCard(row, headers) {
-  // Primera columna → título de la tarjeta
   const titleKey = headers[0];
-  const title    = row[titleKey]?.d || '—';
+  const titleRaw = row[titleKey]?.d || '—';
 
-  // Última columna numérica → badge en la tarjeta
+  // Badge: última columna numérica visible
   let badge = null;
   for (let i = headers.length - 1; i >= 0; i--) {
-    const c = row[headers[i]];
+    const k = headers[i];
+    if (HIDDEN_COLUMNS.has(k)) continue;
+    const c = row[k];
     if (c?.t === 'number' && c.d) { badge = c; break; }
   }
 
   const div = document.createElement('div');
   div.className = 'card';
 
-  // Cabecera de tarjeta
+  // Cabecera — tap para copiar el título
   const top = document.createElement('div');
   top.className = 'card-top';
+  top.style.cursor = 'pointer';
+  top.title = 'Tocar para copiar';
+  top.addEventListener('click', () => copyToClipboard(titleRaw));
+
+  const wrap = document.createElement('div');
+  wrap.className = 'card-title-wrap';
+
   const tEl = document.createElement('div');
   tEl.className = 'card-title';
-  tEl.textContent = title;
-  top.appendChild(tEl);
+  tEl.innerHTML = highlightText(titleRaw, searchQ);
+  wrap.appendChild(tEl);
+
+  // Ícono copy sutil
+  const hint = document.createElement('span');
+  hint.className = 'copy-hint';
+  hint.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>`;
+  wrap.appendChild(hint);
+  top.appendChild(wrap);
 
   if (badge) {
     const n = Number(badge.v);
@@ -566,27 +798,32 @@ function buildCard(row, headers) {
   }
   div.appendChild(top);
 
-  // Cuerpo de la tarjeta
+  // Cuerpo — cada fila es tappable para copiar el valor
   const body = document.createElement('div');
   body.className = 'card-body';
   let count = 0;
 
   headers.forEach((k, i) => {
-    if (i === 0) return; // el título ya está arriba
+    if (i === 0) return;                  // título ya está arriba
+    if (HIDDEN_COLUMNS.has(k)) return;    // columnas ocultas
     const c = row[k];
     if (!c?.d) return;
 
     const kv  = document.createElement('div');
     kv.className = 'kv';
+    kv.title = `Tocar para copiar "${c.d}"`;
+    kv.addEventListener('click', () => copyToClipboard(c.d));
+
     const kEl = document.createElement('span');
     kEl.className = 'kv-k';
-    kEl.textContent = k;
+    kEl.textContent = displayLabel(k);   // aplica alias de columna
+
     const vEl = document.createElement('span');
     const n   = Number(c.v);
     vEl.className = 'kv-v' + (c.t === 'number'
-      ? ' num' + (n > 0 ? ' pos' : n < 0 ? ' neg' : '')
-      : '');
-    vEl.textContent = c.d;
+      ? ' num' + (n > 0 ? ' pos' : n < 0 ? ' neg' : '') : '');
+    vEl.innerHTML = highlightText(c.d, searchQ);
+
     kv.appendChild(kEl);
     kv.appendChild(vEl);
     body.appendChild(kv);
@@ -613,7 +850,7 @@ function esc(s) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ─── Configuración (panel) ────────────────────────────────────────────────────
+// ─── Settings ─────────────────────────────────────────────────────────────────
 function openSettings() {
   document.getElementById('inpId').value   = cfg.id;
   document.getElementById('inpMins').value = cfg.mins;
@@ -632,7 +869,7 @@ function renderSheetList() {
     item.innerHTML = `
       <div class="sitem-info">
         <div class="sitem-name">${esc(s.name)}</div>
-        <div class="sitem-gid">GID: ${esc(s.gid)}</div>
+        <div class="sitem-sub">pestaña: ${esc(s.tab)}</div>
       </div>
       <button class="del-btn" onclick="removeSheet(${i})" aria-label="Eliminar">×</button>`;
     list.appendChild(item);
@@ -644,11 +881,12 @@ function removeSheet(i) {
 }
 function addSheet() {
   const name = document.getElementById('inpName').value.trim();
-  const gid  = document.getElementById('inpGid').value.trim();
-  if (!name || !gid) { alert('Completá el nombre y el GID'); return; }
-  cfg.sheets.push({ name, gid });
+  const tab  = document.getElementById('inpTab').value.trim();
+  if (!name || !tab) { alert('Completá el nombre y el nombre exacto de la pestaña en Sheets'); return; }
+  if (cfg.sheets.some(s => s.tab === tab)) { alert(`Ya existe una hoja con la pestaña "${tab}"`); return; }
+  cfg.sheets.push({ name, tab });
   document.getElementById('inpName').value = '';
-  document.getElementById('inpGid').value  = '';
+  document.getElementById('inpTab').value  = '';
   renderSheetList();
 }
 function saveAndRefresh() {
@@ -674,11 +912,26 @@ document.getElementById('btnSave').addEventListener('click', saveAndRefresh);
 document.getElementById('overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeSettings();
 });
-document.getElementById('inpGid').addEventListener('keydown', e => {
+document.getElementById('inpTab').addEventListener('keydown', e => {
   if (e.key === 'Enter') addSheet();
 });
 
-// ─── Service Worker ───────────────────────────────────────────────────────────
+// Buscador
+const searchEl = document.getElementById('searchInp');
+searchEl.addEventListener('input', e => onSearchInput(e.target.value));
+searchEl.addEventListener('focus', e => { if (e.target.value) showAutocomplete(e.target.value); });
+searchEl.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { clearSearch(); searchEl.blur(); }
+});
+document.getElementById('searchClear').addEventListener('click', () => {
+  clearSearch(); searchEl.focus();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap'))
+    document.getElementById('acList').classList.remove('show');
+});
+
+// ─── SW ───────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
