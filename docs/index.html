@@ -189,6 +189,33 @@
     .kv-v.num { font-variant-numeric: tabular-nums; }
     .kv-v mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
 
+    /* ── Copia ── */
+    .kv { cursor: pointer; border-radius: 6px; margin: 0 -4px; padding: 0 4px; transition: background .12s; }
+    .kv:active { background: var(--surf2); }
+    .card-title-wrap { display: flex; align-items: center; gap: 6px; flex: 1; overflow: hidden; }
+    .copy-hint {
+      opacity: 0; flex-shrink: 0;
+      transition: opacity .15s;
+      color: var(--dim);
+      display: flex; align-items: center;
+    }
+    .card-top:hover .copy-hint,
+    .card-top:focus-within .copy-hint { opacity: 1; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%) translateY(6px);
+      background: var(--surf2); color: var(--text);
+      padding: 8px 18px; border-radius: 20px;
+      font-size: 13px; font-weight: 500; white-space: nowrap;
+      pointer-events: none; opacity: 0; z-index: 400;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      transition: opacity .18s, transform .18s;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
     /* ── Skeleton ── */
     .sk-card {
       background: var(--surf); border-radius: var(--r); border: 1px solid var(--border);
@@ -334,6 +361,9 @@
 
 </div>
 
+<!-- Toast de copiado -->
+<div class="toast" id="toast"></div>
+
 <!-- Settings -->
 <div class="overlay" id="overlay">
   <div class="ssheet">
@@ -421,6 +451,38 @@ let secs       = 0;
 let busy       = false;
 let searchQ    = '';        // query activa
 let suggestions = [];       // pool de autocompletado
+
+// ─── Personalización de columnas ──────────────────────────────────────────────
+// Columnas a renombrar en pantalla (nombre en Sheets → nombre a mostrar)
+const COLUMN_ALIASES = { 'P': 'Verifica', 'V': 'Mensaje' };
+// Columnas a ocultar completamente en las tarjetas
+const HIDDEN_COLUMNS = new Set(['S', 'T', 'U']);
+
+function displayLabel(header) {
+  return COLUMN_ALIASES[header] ?? header;
+}
+
+// ─── Copia al portapapeles ────────────────────────────────────────────────────
+let toastTimer = null;
+function copyToClipboard(text) {
+  const doToast = () => {
+    const el = document.getElementById('toast');
+    el.textContent = '¡Copiado!';
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(doToast).catch(doToast);
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+    doToast();
+  }
+}
 
 // ─── Normalización para búsqueda ─────────────────────────────────────────────
 function norm(s) {
@@ -688,21 +750,42 @@ function buildCard(row, headers) {
   const titleKey = headers[0];
   const titleRaw = row[titleKey]?.d || '—';
 
+  // Badge: última columna numérica visible
   let badge = null;
   for (let i = headers.length - 1; i >= 0; i--) {
-    const c = row[headers[i]];
+    const k = headers[i];
+    if (HIDDEN_COLUMNS.has(k)) continue;
+    const c = row[k];
     if (c?.t === 'number' && c.d) { badge = c; break; }
   }
 
   const div = document.createElement('div');
   div.className = 'card';
 
+  // Cabecera — tap para copiar el título
   const top = document.createElement('div');
   top.className = 'card-top';
+  top.style.cursor = 'pointer';
+  top.title = 'Tocar para copiar';
+  top.addEventListener('click', () => copyToClipboard(titleRaw));
+
+  const wrap = document.createElement('div');
+  wrap.className = 'card-title-wrap';
+
   const tEl = document.createElement('div');
   tEl.className = 'card-title';
   tEl.innerHTML = highlightText(titleRaw, searchQ);
-  top.appendChild(tEl);
+  wrap.appendChild(tEl);
+
+  // Ícono copy sutil
+  const hint = document.createElement('span');
+  hint.className = 'copy-hint';
+  hint.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>`;
+  wrap.appendChild(hint);
+  top.appendChild(wrap);
 
   if (badge) {
     const n = Number(badge.v);
@@ -713,24 +796,32 @@ function buildCard(row, headers) {
   }
   div.appendChild(top);
 
+  // Cuerpo — cada fila es tappable para copiar el valor
   const body = document.createElement('div');
   body.className = 'card-body';
   let count = 0;
 
   headers.forEach((k, i) => {
-    if (i === 0) return;
+    if (i === 0) return;                  // título ya está arriba
+    if (HIDDEN_COLUMNS.has(k)) return;    // columnas ocultas
     const c = row[k];
     if (!c?.d) return;
+
     const kv  = document.createElement('div');
     kv.className = 'kv';
+    kv.title = `Tocar para copiar "${c.d}"`;
+    kv.addEventListener('click', () => copyToClipboard(c.d));
+
     const kEl = document.createElement('span');
     kEl.className = 'kv-k';
-    kEl.textContent = k;
+    kEl.textContent = displayLabel(k);   // aplica alias de columna
+
     const vEl = document.createElement('span');
     const n   = Number(c.v);
     vEl.className = 'kv-v' + (c.t === 'number'
       ? ' num' + (n > 0 ? ' pos' : n < 0 ? ' neg' : '') : '');
     vEl.innerHTML = highlightText(c.d, searchQ);
+
     kv.appendChild(kEl);
     kv.appendChild(vEl);
     body.appendChild(kv);
