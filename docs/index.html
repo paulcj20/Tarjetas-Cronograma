@@ -189,19 +189,14 @@
     .kv-v.num { font-variant-numeric: tabular-nums; }
     .kv-v mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
 
-    /* ── Header extras (Fecha / Contenedor chips) ── */
-    .card-meta {
-      display: flex; gap: 5px; flex-wrap: wrap;
-      padding: 5px 14px 8px;
+    /* ── Header fecha/contenedor (un solo header) ── */
+    .card-header {
+      padding: 9px 14px;
       border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
-    .meta-chip {
-      font-size: 11px; font-weight: 600;
-      padding: 2px 9px; border-radius: 20px;
-    }
-    .meta-chip.fecha      { background: rgba(234,179,8,.15);  color: var(--yellow);  }
-    .meta-chip.contenedor { background: rgba(59,130,246,.15); color: var(--primary); }
-    .meta-chip.gen        { background: var(--surf2);         color: var(--muted);   }
+    .hdr-fecha { font-size: 12px; font-weight: 600; color: var(--yellow); }
+    .hdr-cont  { font-size: 12px; font-weight: 600; color: var(--primary); }
 
     /* ── Copia ── */
     .kv { cursor: pointer; border-radius: 6px; margin: 0 -4px; padding: 0 4px; transition: background .12s; }
@@ -474,34 +469,39 @@ const COLUMN_ALIASES = { 'P': 'Verifica', 'V': 'Mensaje' };
 // Columnas a ocultar completamente en las tarjetas (fallback global)
 const HIDDEN_COLUMNS = new Set(['S', 'T', 'U']);
 
-// Configuración por hoja: columnas visibles/ocultas, chips de cabecera, filtros de fila
+// Configuración por hoja: columnas visibles/ocultas, header, filtros de fila
+// headerExtras: [{ key, side:'left'|'right', cls }] → un único header con fecha|contenedor
+// visibleColIdxs: Set de índices (0-based) → para hojas donde los headers no son letras fijas
+// filterColIdx: índice 0-based de la columna de filtro (más robusto que filtrar por label)
 const SHEET_CONFIG = {
   'FORD': {
     hiddenCols:   new Set(['P', 'Q', 'S', 'T', 'U']),
     headerExtras: [
-      { key: 'Fecha',      cls: 'fecha'      },
-      { key: 'Contenedor', cls: 'contenedor' }
+      { key: 'Fecha',      side: 'left',  cls: 'hdr-fecha' },
+      { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
     ],
     filterRequired: 'Contenedor',
   },
   'PEUGEOT': {
     visibleCols:  new Set(['A','B','C','D','E','F','G','H','I','J','N','U']),
     headerExtras: [
-      { key: 'Fecha',      cls: 'fecha'      },
-      { key: 'Contenedor', cls: 'contenedor' }
+      { key: 'Fecha',      side: 'left',  cls: 'hdr-fecha' },
+      { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
     ],
     filterRequired: 'Contenedor',
   },
   'Estado': {
-    visibleCols: new Set(['B','C','D','E','F','G']),
-    filterCol:   'H',
-    filterVal:   'Citado',
+    visibleColIdxs: new Set([1, 2, 3, 4, 5, 6]),  // B=1,C=2,D=3,E=4,F=5,G=6
+    filterColIdx:   7,                              // columna H (índice 0-based)
+    filterVal:      'Citado',
+    titleColIdx:    1,                              // primer col visible (B) como título
   }
 };
 
-function isColVisible(k, scfg) {
-  if (scfg?.visibleCols) return scfg.visibleCols.has(k);
-  if (scfg?.hiddenCols)  return !scfg.hiddenCols.has(k);
+function isColVisible(k, idx, scfg) {
+  if (scfg?.visibleColIdxs) return scfg.visibleColIdxs.has(idx);
+  if (scfg?.visibleCols)    return scfg.visibleCols.has(k);
+  if (scfg?.hiddenCols)     return !scfg.hiddenCols.has(k);
   return !HIDDEN_COLUMNS.has(k);
 }
 
@@ -712,7 +712,7 @@ function showAutocomplete(q) {
     const i  = nv.indexOf(nq);
     const hl = i === -1 ? esc(v)
       : esc(v.slice(0,i)) + '<mark>' + esc(v.slice(i, i+q.length)) + '</mark>' + esc(v.slice(i+q.length));
-    return `<li class="ac-item" onclick="selectAC('${v.replace(/'/g,"\\'")}')">`
+    return `<li class="ac-item" onclick="selectAC('${v.replace(/'/g,"\\'")}')">` 
       + `<svg class="ac-icon" width="12" height="12" viewBox="0 0 24 24" fill="none"`
       + ` stroke="currentColor" stroke-width="2" stroke-linecap="round">`
       + `<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`
@@ -760,8 +760,10 @@ function renderMain() {
   let rows = d.rows;
   if (scfg?.filterRequired) {
     rows = rows.filter(row => row[scfg.filterRequired]?.d);
-  } else if (scfg?.filterCol && scfg?.filterVal) {
-    rows = rows.filter(row => row[scfg.filterCol]?.d === scfg.filterVal);
+  } else if (scfg?.filterColIdx !== undefined && scfg?.filterVal) {
+    const fKey = d.headers[scfg.filterColIdx];
+    const fVal = scfg.filterVal.toLowerCase();
+    rows = rows.filter(row => fKey && row[fKey]?.d?.toLowerCase() === fVal);
   }
   const filtered = filterRows(rows, d.headers, searchQ);
 
@@ -803,90 +805,87 @@ function renderMain() {
 }
 
 function buildCard(row, headers, sheetTab) {
-  const scfg     = SHEET_CONFIG[sheetTab] || {};
-  const extras   = scfg.headerExtras || [];
+  const scfg      = SHEET_CONFIG[sheetTab] || {};
+  const extras    = scfg.headerExtras || [];
   const extraKeys = new Set(extras.map(ex => ex.key));
-
-  const titleKey = headers[0];
-  const titleRaw = row[titleKey]?.d || '—';
-
-  // Badge: última columna numérica visible (excluye extras del header)
-  let badge = null;
-  for (let i = headers.length - 1; i >= 0; i--) {
-    const k = headers[i];
-    if (!isColVisible(k, scfg) || extraKeys.has(k)) continue;
-    const c = row[k];
-    if (c?.t === 'number' && c.d) { badge = c; break; }
-  }
+  const titleIdx  = scfg.titleColIdx ?? 0;
+  const titleKey  = headers[titleIdx];
+  const titleRaw  = row[titleKey]?.d || '—';
 
   const div = document.createElement('div');
   div.className = 'card';
 
-  // Cabecera — tap para copiar el título
-  const top = document.createElement('div');
-  top.className = 'card-top';
-  top.style.cursor = 'pointer';
-  top.title = 'Tocar para copiar';
-  top.addEventListener('click', () => copyToClipboard(titleRaw));
-
-  const wrap = document.createElement('div');
-  wrap.className = 'card-title-wrap';
-
-  const tEl = document.createElement('div');
-  tEl.className = 'card-title';
-  tEl.innerHTML = highlightText(titleRaw, searchQ);
-  wrap.appendChild(tEl);
-
-  // Ícono copy sutil
-  const hint = document.createElement('span');
-  hint.className = 'copy-hint';
-  hint.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-  </svg>`;
-  wrap.appendChild(hint);
-  top.appendChild(wrap);
-
-  if (badge) {
-    const n = Number(badge.v);
-    const p = document.createElement('span');
-    p.className = 'pill ' + (n > 0 ? 'pos' : n < 0 ? 'neg' : 'neu');
-    p.textContent = badge.d;
-    top.appendChild(p);
-  }
-  div.appendChild(top);
-
-  // Chips de cabecera: Fecha y Contenedor con colores distintivos
   if (extras.length) {
-    const hasAny = extras.some(ex => row[ex.key]?.d);
-    if (hasAny) {
-      const meta = document.createElement('div');
-      meta.className = 'card-meta';
-      extras.forEach(ex => {
-        const val = row[ex.key]?.d;
-        if (!val) return;
-        const chip = document.createElement('span');
-        chip.className = `meta-chip ${ex.cls}`;
-        chip.textContent = val;
-        meta.appendChild(chip);
-      });
-      div.appendChild(meta);
+    // ── Un solo header: Fecha (izq) | Contenedor (der) ──────────────────────
+    const left  = extras.find(ex => ex.side === 'left');
+    const right = extras.find(ex => ex.side === 'right');
+    const hdr   = document.createElement('div');
+    hdr.className = 'card-header';
+
+    const lEl = document.createElement('span');
+    lEl.className = left?.cls || 'hdr-fecha';
+    lEl.textContent = (left ? row[left.key]?.d : '') || '—';
+    hdr.appendChild(lEl);
+
+    const rEl = document.createElement('span');
+    rEl.className = right?.cls || 'hdr-cont';
+    rEl.textContent = (right ? row[right.key]?.d : '') || '';
+    hdr.appendChild(rEl);
+
+    div.appendChild(hdr);
+  } else {
+    // ── Header estándar: título + badge ──────────────────────────────────────
+    let badge = null;
+    for (let i = headers.length - 1; i >= 0; i--) {
+      if (!isColVisible(headers[i], i, scfg) || extraKeys.has(headers[i])) continue;
+      const c = row[headers[i]];
+      if (c?.t === 'number' && c.d) { badge = c; break; }
     }
+
+    const top = document.createElement('div');
+    top.className = 'card-top';
+    top.style.cursor = 'pointer';
+    top.addEventListener('click', () => copyToClipboard(titleRaw));
+
+    const wrap = document.createElement('div');
+    wrap.className = 'card-title-wrap';
+    const tEl = document.createElement('div');
+    tEl.className = 'card-title';
+    tEl.innerHTML = highlightText(titleRaw, searchQ);
+    wrap.appendChild(tEl);
+
+    const hint = document.createElement('span');
+    hint.className = 'copy-hint';
+    hint.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>`;
+    wrap.appendChild(hint);
+    top.appendChild(wrap);
+
+    if (badge) {
+      const n = Number(badge.v);
+      const p = document.createElement('span');
+      p.className = 'pill ' + (n > 0 ? 'pos' : n < 0 ? 'neg' : 'neu');
+      p.textContent = badge.d;
+      top.appendChild(p);
+    }
+    div.appendChild(top);
   }
 
-  // Cuerpo — cada fila es tappable para copiar el valor
+  // ── Cuerpo ───────────────────────────────────────────────────────────────
   const body = document.createElement('div');
   body.className = 'card-body';
   let count = 0;
 
   headers.forEach((k, i) => {
-    if (i === 0) return;                       // título ya está arriba
-    if (!isColVisible(k, scfg)) return;        // columnas ocultas / no visibles
-    if (extraKeys.has(k)) return;              // ya mostrado en chips de cabecera
+    if (!isColVisible(k, i, scfg)) return;
+    if (extraKeys.has(k)) return;
+    if (!extras.length && i === titleIdx) return;  // ya está en el título
     const c = row[k];
     if (!c?.d) return;
 
-    const kv  = document.createElement('div');
+    const kv = document.createElement('div');
     kv.className = 'kv';
     kv.title = `Tocar para copiar "${c.d}"`;
     kv.addEventListener('click', () => copyToClipboard(c.d));
