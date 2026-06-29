@@ -483,7 +483,8 @@ const SHEET_CONFIG = {
     filterRequired: 'Contenedor',
   },
   'PEUGEOT': {
-    visibleCols:  new Set(['A','B','C','D','E','F','G','H','I','J','N','U']),
+    // A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,N=13,U=20
+    visibleColIdxs: new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 20]),
     headerExtras: [
       { key: 'Fecha',      side: 'left',  cls: 'hdr-fecha' },
       { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
@@ -878,27 +879,31 @@ function buildCard(row, headers, sheetTab) {
   body.className = 'card-body';
   let count = 0;
 
+  // En hojas con whitelist explícita, mostrar la columna aunque esté vacía
+  const isWhitelist = !!(scfg.visibleCols || scfg.visibleColIdxs);
+
   headers.forEach((k, i) => {
     if (!isColVisible(k, i, scfg)) return;
     if (extraKeys.has(k)) return;
     if (!extras.length && i === titleIdx) return;  // ya está en el título
     const c = row[k];
-    if (!c?.d) return;
+    if (!isWhitelist && !c?.d) return;  // hojas sin whitelist: omitir vacíos
 
     const kv = document.createElement('div');
     kv.className = 'kv';
-    kv.title = `Tocar para copiar "${c.d}"`;
-    kv.addEventListener('click', () => copyToClipboard(c.d));
+    const valTxt = c?.d || '';
+    kv.title = valTxt ? `Tocar para copiar "${valTxt}"` : '';
+    if (valTxt) kv.addEventListener('click', () => copyToClipboard(valTxt));
 
     const kEl = document.createElement('span');
     kEl.className = 'kv-k';
     kEl.textContent = displayLabel(k);
 
     const vEl = document.createElement('span');
-    const n   = Number(c.v);
-    vEl.className = 'kv-v' + (c.t === 'number'
+    const n   = Number(c?.v);
+    vEl.className = 'kv-v' + (c?.t === 'number'
       ? ' num' + (n > 0 ? ' pos' : n < 0 ? ' neg' : '') : '');
-    vEl.innerHTML = highlightText(c.d, searchQ);
+    vEl.innerHTML = valTxt ? highlightText(valTxt, searchQ) : '<span style="opacity:.3">—</span>';
 
     kv.appendChild(kEl);
     kv.appendChild(vEl);
