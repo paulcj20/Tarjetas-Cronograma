@@ -427,8 +427,6 @@
 
 <script>
 // ─── Config ───────────────────────────────────────────────────────────────────
-// sheets: [{ name: 'Nombre en app', tab: 'Nombre exacto pestaña en Sheets' }]
-// "tab" se usa con &sheet=TAB en la API, más fiable que el GID numérico.
 const DEF = {
   id: '1WQnMC-Nns6xISoLyxAAGtn_GT31z1R8jnoyLmoJY3iA',
   sheets: [
@@ -443,7 +441,6 @@ let cfg = (() => {
   try {
     const saved = JSON.parse(localStorage.getItem('fin_cfg'));
     if (!saved) return { ...DEF };
-    // Migración: si hojas viejas usan "gid" en lugar de "tab", convertir
     if (saved.sheets) {
       saved.sheets = saved.sheets.map(s => ({
         name: s.name,
@@ -456,26 +453,21 @@ let cfg = (() => {
 })();
 
 let activeIdx  = 0;
-let cache      = {};        // clave: s.tab
+let cache      = {};
 let timer      = null;
 let secs       = 0;
 let busy       = false;
-let searchQ    = '';        // query activa
-let suggestions = [];       // pool de autocompletado
+let searchQ    = '';
+let suggestions = [];
 
 // ─── Personalización de columnas ──────────────────────────────────────────────
-// Columnas a renombrar en pantalla (nombre en Sheets → nombre a mostrar)
 const COLUMN_ALIASES = { 'P': 'Verifica', 'V': 'Mensaje' };
-// Columnas a ocultar completamente en las tarjetas (fallback global)
 const HIDDEN_COLUMNS = new Set(['S', 'T', 'U']);
 
-// Configuración por hoja: columnas visibles/ocultas, header, filtros de fila
-// headerExtras: [{ key, side:'left'|'right', cls }] → un único header con fecha|contenedor
-// visibleColIdxs: Set de índices (0-based) → para hojas donde los headers no son letras fijas
-// filterColIdx: índice 0-based de la columna de filtro (más robusto que filtrar por label)
 const SHEET_CONFIG = {
   'FORD': {
-    hiddenCols:   new Set(['P', 'Q', 'S', 'T', 'U']),
+    // A=0,B=1,D=3,E=4,F=5,G=6,H=7,I=8,O=14,V=21
+    visibleColIdxs: new Set([0, 1, 3, 4, 5, 6, 7, 8, 14, 21]),
     headerExtras: [
       { key: 'Fecha',      side: 'left',  cls: 'hdr-fecha' },
       { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
@@ -495,7 +487,7 @@ const SHEET_CONFIG = {
     visibleColIdxs: new Set([1, 2, 3, 4, 5, 6]),  // B=1,C=2,D=3,E=4,F=5,G=6
     filterColIdx:   7,                              // columna H (índice 0-based)
     filterVal:      'Citado',
-    titleColIdx:    1,                              // primer col visible (B) como título
+    titleColIdx:    1,
   }
 };
 
@@ -539,8 +531,6 @@ function norm(s) {
 }
 
 // ─── Fetch ───────────────────────────────────────────────────────────────────
-// Usa &sheet=NOMBRE (nombre exacto de la pestaña), no el GID numérico.
-// Esto garantiza cargar la hoja correcta sin importar el orden.
 async function loadSheet(tab, sheetId) {
   const id  = sheetId || cfg.id;
   const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq`
@@ -756,7 +746,6 @@ function renderMain() {
     return;
   }
 
-  // Filtro de filas según config por hoja
   const scfg = SHEET_CONFIG[sheet.tab];
   let rows = d.rows;
   if (scfg?.filterRequired) {
@@ -790,7 +779,6 @@ function renderMain() {
     return;
   }
 
-  // Contador de resultados (solo cuando hay búsqueda activa)
   if (searchQ) {
     rEl.textContent = `${filtered.length} resultado${filtered.length !== 1 ? 's' : ''} en "${sheet.name}"`;
     rEl.classList.add('show');
@@ -817,7 +805,6 @@ function buildCard(row, headers, sheetTab) {
   div.className = 'card';
 
   if (extras.length) {
-    // ── Un solo header: Fecha (izq) | Contenedor (der) ──────────────────────
     const left  = extras.find(ex => ex.side === 'left');
     const right = extras.find(ex => ex.side === 'right');
     const hdr   = document.createElement('div');
@@ -835,7 +822,6 @@ function buildCard(row, headers, sheetTab) {
 
     div.appendChild(hdr);
   } else {
-    // ── Header estándar: título + badge ──────────────────────────────────────
     let badge = null;
     for (let i = headers.length - 1; i >= 0; i--) {
       if (!isColVisible(headers[i], i, scfg) || extraKeys.has(headers[i])) continue;
@@ -874,7 +860,6 @@ function buildCard(row, headers, sheetTab) {
     div.appendChild(top);
   }
 
-  // ── Cuerpo ───────────────────────────────────────────────────────────────
   const body = document.createElement('div');
   body.className = 'card-body';
   let count = 0;
@@ -882,7 +867,7 @@ function buildCard(row, headers, sheetTab) {
   headers.forEach((k, i) => {
     if (!isColVisible(k, i, scfg)) return;
     if (extraKeys.has(k)) return;
-    if (!extras.length && i === titleIdx) return;  // ya está en el título
+    if (!extras.length && i === titleIdx) return;
     const c = row[k];
 
     const kv = document.createElement('div');
@@ -993,7 +978,6 @@ document.getElementById('inpTab').addEventListener('keydown', e => {
   if (e.key === 'Enter') addSheet();
 });
 
-// Buscador
 const searchEl = document.getElementById('searchInp');
 searchEl.addEventListener('input', e => onSearchInput(e.target.value));
 searchEl.addEventListener('focus', e => { if (e.target.value) showAutocomplete(e.target.value); });
@@ -1008,12 +992,10 @@ document.addEventListener('click', e => {
     document.getElementById('acList').classList.remove('show');
 });
 
-// ─── SW ───────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-// ─── Inicio ───────────────────────────────────────────────────────────────────
 renderTabs();
 renderMain();
 refreshAll();

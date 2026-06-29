@@ -1,4 +1,4 @@
-const CACHE = 'finanzas-v6';
+const CACHE = 'finanzas-v7';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
@@ -22,7 +22,6 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Llamadas a Google Sheets → siempre red
   if (url.hostname.includes('google.com') || url.hostname.includes('googleapis.com')) {
     e.respondWith(
       fetch(e.request).catch(() =>
@@ -35,7 +34,6 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // App shell → cache primero, red como fallback
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
