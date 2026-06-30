@@ -480,12 +480,12 @@ const SHEET_CONFIG = {
     filterRequired: 'Contenedor',
   },
   'PEUGEOT': {
-    // (la 1ra columna de la planilla está vacía y se descarta, por eso el índice -1)
-    // Booking=0,Lote=1,Contenedor=2,DUA=3,Canal=4,Depo=5,DESTINO=6,CHOFER=7,
-    // MATRICULA=8,Ingreso=9,OBSERVACIONES=12,Mensaje(col U)=19
-    visibleColIdxs: new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 19]),
+    // Letras del Sheet → índice 0-based (A=0, B=1, ...):
+    // A=0(fecha), C=2(Lote), D=3(Contenedor), E=4(DUA), F=5(Canal), G=6(Depo),
+    // H=7(DESTINO), I=8(CHOFER), J=9(MATRICULA), N=13(OBSERVACIONES), U=20(Mensaje)
+    visibleColIdxs: new Set([0, 2, 3, 4, 5, 6, 7, 8, 9, 13, 20]),
     headerExtras: [
-      { key: 'Fecha',      side: 'left',  cls: 'hdr-fecha' },
+      { key: 'A',          side: 'left',  cls: 'hdr-fecha' },  // columna A = fecha (sin encabezado)
       { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
     ],
     filterRequired: 'Contenedor',
@@ -561,7 +561,10 @@ async function loadSheet(tab, sheetId) {
 
 function parseTable(t) {
   if (!t) return { headers: [], rows: [] };
-  const headers = t.cols.map(c => (c.label || c.id || '').trim()).filter(Boolean);
+  // Sin .filter(Boolean): si una columna no tiene encabezado usamos su letra
+  // (c.id) para que el índice del header coincida siempre con el de la columna
+  // del Sheet y los valores no se desalineen.
+  const headers = t.cols.map(c => ((c.label || '').trim() || c.id || '').trim());
   const types   = t.cols.map(c => c.type);
   const rows = (t.rows || []).map(row => {
     const o = {};
