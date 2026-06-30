@@ -426,7 +426,7 @@
 </div>
 
 <script>
-// ─── Config ───────────────────────────────────────────────────────────────────
+// ─── Config ────────────────────────────────────────────────────
 const DEF = {
   id: '1WQnMC-Nns6xISoLyxAAGtn_GT31z1R8jnoyLmoJY3iA',
   sheets: [
@@ -460,8 +460,13 @@ let busy       = false;
 let searchQ    = '';
 let suggestions = [];
 
-// ─── Personalización de columnas ──────────────────────────────────────────────
-const COLUMN_ALIASES = { 'P': 'Verifica', 'V': 'Mensaje' };
+// ─── Personalización de columnas ─────────────────────────────────────
+const COLUMN_ALIASES = {
+  'P': 'Verifica',
+  'V': 'Mensaje',
+  'Oservaciones': 'Observaciones',   // FORD (typo en la planilla)
+  'OBSERVACIONES': 'Observaciones'    // PEUGEOT
+};
 const HIDDEN_COLUMNS = new Set(['S', 'T', 'U']);
 
 const SHEET_CONFIG = {
@@ -475,8 +480,10 @@ const SHEET_CONFIG = {
     filterRequired: 'Contenedor',
   },
   'PEUGEOT': {
-    // A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,N=13,U=20
-    visibleColIdxs: new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 20]),
+    // (la 1ra columna de la planilla está vacía y se descarta, por eso el índice -1)
+    // Booking=0,Lote=1,Contenedor=2,DUA=3,Canal=4,Depo=5,DESTINO=6,CHOFER=7,
+    // MATRICULA=8,Ingreso=9,OBSERVACIONES=12,Mensaje(col U)=19
+    visibleColIdxs: new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 19]),
     headerExtras: [
       { key: 'Fecha',      side: 'left',  cls: 'hdr-fecha' },
       { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
@@ -502,7 +509,7 @@ function displayLabel(header) {
   return COLUMN_ALIASES[header] ?? header;
 }
 
-// ─── Copia al portapapeles ────────────────────────────────────────────────────
+// ─── Copia al portapapeles ───────────────────────────────────────
 let toastTimer = null;
 function copyToClipboard(text) {
   const doToast = () => {
@@ -524,13 +531,13 @@ function copyToClipboard(text) {
   }
 }
 
-// ─── Normalización para búsqueda ─────────────────────────────────────────────
+// ─── Normalización para búsqueda ───────────────────────────────────
 function norm(s) {
   return String(s).toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-// ─── Fetch ───────────────────────────────────────────────────────────────────
+// ─── Fetch ──────────────────────────────────────────────────
 async function loadSheet(tab, sheetId) {
   const id  = sheetId || cfg.id;
   const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq`
@@ -569,7 +576,7 @@ function parseTable(t) {
   return { headers, rows };
 }
 
-// ─── Refresco ─────────────────────────────────────────────────────────────────
+// ─── Refresco ────────────────────────────────────────────────
 async function refreshAll() {
   if (busy) return;
   busy = true;
@@ -599,7 +606,7 @@ function startTimer() {
   tick();
 }
 
-// ─── Estado ───────────────────────────────────────────────────────────────────
+// ─── Estado ──────────────────────────────────────────────────
 function setStatus(state) {
   const dot = document.getElementById('dot');
   const txt = document.getElementById('statusTxt');
@@ -628,7 +635,7 @@ function tick() {
   }
 }
 
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
+// ─── Tabs ────────────────────────────────────────────────────
 function renderTabs() {
   const bar = document.getElementById('tabsBar');
   bar.innerHTML = '';
@@ -641,7 +648,7 @@ function renderTabs() {
   });
 }
 
-// ─── Búsqueda ─────────────────────────────────────────────────────────────────
+// ─── Búsqueda ─────────────────────────────────────────────────
 function buildSuggestions() {
   const seen = new Set();
   suggestions = [];
@@ -726,7 +733,7 @@ function clearSearch() {
   onSearchInput('');
 }
 
-// ─── Render principal ─────────────────────────────────────────────────────────
+// ─── Render principal ─────────────────────────────────────────────
 function renderMain() {
   const el    = document.getElementById('main');
   const rEl   = document.getElementById('resultCount');
@@ -914,7 +921,7 @@ function esc(s) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ─── Settings ─────────────────────────────────────────────────────────────────
+// ─── Settings ─────────────────────────────────────────────────
 function openSettings() {
   document.getElementById('inpId').value   = cfg.id;
   document.getElementById('inpMins').value = cfg.mins;
@@ -967,7 +974,7 @@ function saveAndRefresh() {
   refreshAll();
 }
 
-// ─── Eventos ──────────────────────────────────────────────────────────────────
+// ─── Eventos ─────────────────────────────────────────────────
 document.getElementById('btnRefresh').addEventListener('click', refreshAll);
 document.getElementById('btnSettings').addEventListener('click', openSettings);
 document.getElementById('btnClose').addEventListener('click', closeSettings);
