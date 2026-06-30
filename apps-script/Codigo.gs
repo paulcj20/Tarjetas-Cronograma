@@ -86,6 +86,33 @@ function _json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// ── PRUEBA: corré esta función con el botón "Ejecutar" del editor ──
+// Escribe en el CHOFER de la primera fila de PEUGEOT, sin pasar por la app web.
+// Sirve para ver si el problema es de permisos / matching. (Podés deshacer con Ctrl+Z.)
+function test() {
+  var SPREADSHEET_ID = "1WQnMC-Nns6xISoLyxAAGtn_GT31z1R8jnoyLmoJY3iA";
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sh = ss.getSheetByName("PEUGEOT");
+  var values  = sh.getDataRange().getValues();
+  var headers = values[0];
+  var keyIdx  = headers.indexOf("Contenedor");
+  Logger.log('Headers fila 1: ' + JSON.stringify(headers));
+  Logger.log('Indice Contenedor: ' + keyIdx + ' | Indice CHOFER: ' + headers.indexOf("CHOFER"));
+  var keyVal = values[1] ? values[1][keyIdx] : '';
+  Logger.log('Probando con Contenedor = "' + keyVal + '"');
+
+  var body = {
+    spreadsheetId: SPREADSHEET_ID,
+    tab: "PEUGEOT",
+    keyCol: "Contenedor",
+    keyVal: String(keyVal),
+    col: "CHOFER",
+    value: "PRUEBA_APP"
+  };
+  var res = doPost({ postData: { contents: JSON.stringify(body) } });
+  Logger.log('Resultado doPost: ' + res.getContent());
+}
+
 // ───────────────────────────────────────────────
 // 2) TRIGGER INSTALABLE (edición manual en la planilla)
 // ───────────────────────────────────────────────
