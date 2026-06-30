@@ -209,6 +209,19 @@
     }
     .ti-v mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
 
+    /* ── Celdas editables ── */
+    .kv.editable .kv-v,
+    .ti.editable .ti-v { border-bottom: 1px dashed var(--primary); }
+    .ti.editable { outline: 1px solid rgba(59,130,246,.35); }
+    .edit-inp {
+      width: 100%; max-width: 170px;
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--primary); border-radius: 6px;
+      font-size: 13px; padding: 4px 6px; outline: none;
+      -webkit-appearance: none;
+    }
+    .edit-inp.time { max-width: 100%; text-align: center; font-weight: 600; }
+
     /* ── Header fecha/contenedor (un solo header) ── */
     .card-header {
       padding: 9px 14px;
@@ -432,6 +445,16 @@
     </div>
 
     <div class="s-sec">
+      <div class="s-lbl">Guardar cambios (Apps Script)</div>
+      <input class="inp" id="inpApiUrl" placeholder="URL de la app web (…/exec)" style="margin-bottom:8px">
+      <input class="inp" id="inpApiToken" placeholder="Token (opcional)">
+      <div class="s-help">
+        Pegá acá la URL de la app web de Apps Script para poder editar CHOFER,
+        MATRICULA y los horarios desde la app. Sin esto, la edición no se guarda.
+      </div>
+    </div>
+
+    <div class="s-sec">
       <div class="s-lbl">Actualización automática</div>
       <div class="intvl-row">
         <input class="inp" type="number" id="inpMins" min="1" max="60" placeholder="5">
@@ -446,7 +469,7 @@
 </div>
 
 <script>
-// ─── Config ────────────────────────────────────────────────────
+// ─── Config ─────────────────────────────────────────
 const DEF = {
   id: '1WQnMC-Nns6xISoLyxAAGtn_GT31z1R8jnoyLmoJY3iA',
   sheets: [
@@ -454,7 +477,9 @@ const DEF = {
     { name: 'PEUGEOT', tab: 'PEUGEOT' },
     { name: 'Estado',  tab: 'Estado',  id: '121UueMo_SABwg2VE7m6Js-ctDxyfaiyt1OrS10wRZGo' }
   ],
-  mins: 5
+  mins: 5,
+  apiUrl: '',     // URL de la app web de Apps Script (para guardar cambios)
+  apiToken: ''    // token opcional (debe coincidir con el del script)
 };
 
 let cfg = (() => {
@@ -499,6 +524,8 @@ const SHEET_CONFIG = {
     ],
     // Horarios en una sola fila: J=9(Ingreso), K=10(S1), L=11(I2), M=12(Salida)
     inlineCols: [9, 10, 11, 12],
+    // Columnas editables (texto con autocompletado): H=7(CHOFER), I=8(Matricula)
+    editCols: new Set([7, 8]),
     filterRequired: 'Contenedor',
   },
   'PEUGEOT': {
@@ -512,6 +539,8 @@ const SHEET_CONFIG = {
     ],
     // Horarios en una sola fila: K=10(Ingreso), L=11(Salida)
     inlineCols: [10, 11],
+    // Columnas editables (texto con autocompletado): H=7(CHOFER), J=9(MATRICULA)
+    editCols: new Set([7, 9]),
     filterRequired: 'Contenedor',
   },
   'Estado': {
@@ -533,26 +562,155 @@ function displayLabel(header) {
   return COLUMN_ALIASES[header] ?? header;
 }
 
-// ─── Copia al portapapeles ───────────────────────────────────────
+// ─── Toast ─────────────────────────────────────────────
 let toastTimer = null;
+function toast(msg, ms = 1600) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ─── Copia al portapapeles ────────────────────────────────────
 function copyToClipboard(text) {
-  const doToast = () => {
-    const el = document.getElementById('toast');
-    el.textContent = '¡Copiado!';
-    el.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
-  };
   if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).then(doToast).catch(doToast);
+    navigator.clipboard.writeText(text).then(() => toast('¡Copiado!')).catch(() => toast('¡Copiado!'));
   } else {
     const ta = document.createElement('textarea');
     ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
     document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); } catch {}
     document.body.removeChild(ta);
-    doToast();
+    toast('¡Copiado!');
   }
+}
+
+// ─── Edición / guardado en la planilla (Apps Script) ──────────
+// Valores distintos de una columna (para el autocompletado)
+function columnValues(tab, header) {
+  const d = cache[tab];
+  if (!d || d.err) return [];
+  const set = new Set();
+  d.rows.forEach(r => { const v = r[header]?.d; if (v) set.add(v); });
+  return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+// Normaliza un horario a "HH:MM" (24h) para el selector de hora
+function normTime(s) {
+  if (!s) return '';
+  s = String(s).trim();
+  let m = s.match(/(\d{1,2}):(\d{2})/);
+  if (m) {
+    let h = +m[1];
+    if (/p\.?m\.?/i.test(s) && h < 12) h += 12;
+    if (/a\.?m\.?/i.test(s) && h === 12) h = 0;
+    return String(h).padStart(2, '0') + ':' + m[2];
+  }
+  m = s.match(/^(\d{2})(\d{2})/);   // formato "0700"
+  if (m) return m[1] + ':' + m[2];
+  return '';
+}
+
+// Envía un cambio a la planilla vía la app web de Apps Script
+async function saveCell(tab, keyCol, keyVal, col, value) {
+  if (!cfg.apiUrl) throw new Error('NO_API');
+  const sheet = cfg.sheets.find(s => s.tab === tab) || {};
+  const res = await fetch(cfg.apiUrl, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: cfg.apiToken || '',
+      spreadsheetId: sheet.id || cfg.id,
+      tab, keyCol, keyVal, col, value
+    })
+  });
+  const txt = await res.text();
+  let data = {};
+  try { data = JSON.parse(txt); } catch { throw new Error('Respuesta inválida'); }
+  if (!data.ok) throw new Error(data.error || 'Error al guardar');
+  return data;
+}
+
+// Confirma el cambio: actualiza local, guarda y re-renderiza
+async function commitCell(tab, row, header, value) {
+  const scfg   = SHEET_CONFIG[tab] || {};
+  const keyCol = scfg.filterRequired || 'Contenedor';
+  const keyVal = row[keyCol]?.d || '';
+  if (!cfg.apiUrl) { toast('Configurá la URL de guardado en ⚙️'); renderMain(); return; }
+  if (!keyVal)     { toast('No se puede guardar: falta ' + keyCol); renderMain(); return; }
+  toast('Guardando…', 4000);
+  try {
+    await saveCell(tab, keyCol, keyVal, header, value);
+    row[header] = { v: value, d: value, t: row[header]?.t || 'string' };
+    buildSuggestions();
+    renderMain();
+    toast('Guardado ✓');
+  } catch (e) {
+    renderMain();
+    toast('Error: ' + e.message);
+  }
+}
+
+// Convierte una celda kv en un input editable con autocompletado
+function startEditKV(vEl, tab, row, header) {
+  if (vEl.querySelector('input')) return;
+  const cur = row[header]?.d || '';
+  const input = document.createElement('input');
+  input.className = 'edit-inp';
+  input.value = cur;
+  input.autocomplete = 'off';
+  const dlId = 'dl-' + Math.random().toString(36).slice(2);
+  const dl = document.createElement('datalist');
+  dl.id = dlId;
+  columnValues(tab, header).forEach(v => {
+    const o = document.createElement('option'); o.value = v; dl.appendChild(o);
+  });
+  input.setAttribute('list', dlId);
+  vEl.innerHTML = '';
+  vEl.appendChild(input);
+  vEl.appendChild(dl);
+  input.focus(); input.select();
+  let done = false;
+  const finish = (save) => {
+    if (done) return; done = true;
+    const nv = input.value.trim();
+    if (save && nv !== cur) commitCell(tab, row, header, nv);
+    else renderMain();
+  };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') finish(false);
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+// Convierte una casilla de horario en un selector de hora del teléfono
+function startEditTime(tv, tab, row, header) {
+  if (tv.querySelector('input')) return;
+  const cur = row[header]?.d || '';
+  const input = document.createElement('input');
+  input.type = 'time';
+  input.className = 'edit-inp time';
+  input.value = normTime(cur);
+  tv.innerHTML = '';
+  tv.appendChild(input);
+  input.focus();
+  if (input.showPicker) { try { input.showPicker(); } catch {} }
+  let done = false;
+  const finish = (save) => {
+    if (done) return; done = true;
+    const nv = input.value.trim();
+    if (save && nv !== normTime(cur)) commitCell(tab, row, header, nv);
+    else renderMain();
+  };
+  input.addEventListener('change', () => finish(true));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') finish(false);
+  });
+  input.addEventListener('blur', () => finish(true));
 }
 
 // ─── Normalización para búsqueda ───────────────────────────────────
@@ -760,7 +918,7 @@ function clearSearch() {
   onSearchInput('');
 }
 
-// ─── Render principal ─────────────────────────────────────────────
+// ─── Render principal ──────────────────────────────────────────
 function renderMain() {
   const el    = document.getElementById('main');
   const rEl   = document.getElementById('resultCount');
@@ -901,6 +1059,7 @@ function buildCard(row, headers, sheetTab) {
   let count = 0;
 
   const inlineSet = new Set(scfg.inlineCols || []);
+  const editSet   = scfg.editCols || new Set();
 
   headers.forEach((k, i) => {
     if (!isColVisible(k, i, scfg)) return;
@@ -908,12 +1067,11 @@ function buildCard(row, headers, sheetTab) {
     if (inlineSet.has(i)) return;
     if (!extras.length && i === titleIdx) return;
     const c = row[k];
+    const editable = editSet.has(i);
 
     const kv = document.createElement('div');
-    kv.className = 'kv';
+    kv.className = 'kv' + (editable ? ' editable' : '');
     const valTxt = c?.d || '';
-    kv.title = valTxt ? `Tocar para copiar "${valTxt}"` : '';
-    if (valTxt) kv.addEventListener('click', () => copyToClipboard(valTxt));
 
     const kEl = document.createElement('span');
     kEl.className = 'kv-k';
@@ -924,6 +1082,14 @@ function buildCard(row, headers, sheetTab) {
     vEl.className = 'kv-v' + (c?.t === 'number'
       ? ' num' + (n > 0 ? ' pos' : n < 0 ? ' neg' : '') : '');
     vEl.innerHTML = valTxt ? highlightText(valTxt, searchQ) : '<span style="opacity:.3">—</span>';
+
+    if (editable) {
+      kv.title = 'Tocar para editar';
+      kv.addEventListener('click', () => startEditKV(vEl, sheetTab, row, k));
+    } else {
+      kv.title = valTxt ? `Tocar para copiar "${valTxt}"` : '';
+      if (valTxt) kv.addEventListener('click', () => copyToClipboard(valTxt));
+    }
 
     kv.appendChild(kEl);
     kv.appendChild(vEl);
@@ -942,12 +1108,9 @@ function buildCard(row, headers, sheetTab) {
       const valTxt = c?.d || '';
 
       const ti = document.createElement('div');
-      ti.className = 'ti';
-      if (valTxt) {
-        ti.style.cursor = 'pointer';
-        ti.title = `Tocar para copiar "${valTxt}"`;
-        ti.addEventListener('click', () => copyToClipboard(valTxt));
-      }
+      ti.className = 'ti editable';
+      ti.style.cursor = 'pointer';
+      ti.title = 'Tocar para editar la hora';
 
       const tk = document.createElement('span');
       tk.className = 'ti-k';
@@ -956,6 +1119,8 @@ function buildCard(row, headers, sheetTab) {
       const tv = document.createElement('span');
       tv.className = 'ti-v';
       tv.innerHTML = valTxt ? highlightText(valTxt, searchQ) : '<span style="opacity:.3">—</span>';
+
+      ti.addEventListener('click', () => startEditTime(tv, sheetTab, row, k));
 
       ti.appendChild(tk);
       ti.appendChild(tv);
@@ -987,8 +1152,10 @@ function esc(s) {
 
 // ─── Settings ─────────────────────────────────────────────────
 function openSettings() {
-  document.getElementById('inpId').value   = cfg.id;
-  document.getElementById('inpMins').value = cfg.mins;
+  document.getElementById('inpId').value       = cfg.id;
+  document.getElementById('inpMins').value     = cfg.mins;
+  document.getElementById('inpApiUrl').value   = cfg.apiUrl   || '';
+  document.getElementById('inpApiToken').value = cfg.apiToken || '';
   renderSheetList();
   document.getElementById('overlay').classList.add('on');
 }
@@ -1028,8 +1195,10 @@ function saveAndRefresh() {
   const newId = document.getElementById('inpId').value.trim();
   if (!newId) { alert('El ID de la planilla no puede estar vacío'); return; }
   if (!cfg.sheets.length) { alert('Agregá al menos una hoja'); return; }
-  cfg.id   = newId;
-  cfg.mins = Math.max(1, parseInt(document.getElementById('inpMins').value) || 5);
+  cfg.id       = newId;
+  cfg.mins     = Math.max(1, parseInt(document.getElementById('inpMins').value) || 5);
+  cfg.apiUrl   = document.getElementById('inpApiUrl').value.trim();
+  cfg.apiToken = document.getElementById('inpApiToken').value.trim();
   localStorage.setItem('fin_cfg', JSON.stringify(cfg));
   closeSettings();
   cache = {};
