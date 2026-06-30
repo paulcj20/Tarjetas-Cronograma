@@ -1,4 +1,4 @@
-const CACHE = 'finanzas-v12';
+const CACHE = 'finanzas-v13';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
@@ -20,6 +20,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Solo manejamos GET (lecturas). Los POST (guardar en Apps Script) van
+  // directo a la red sin que el SW los toque, para no romper el guardado.
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
 
   if (url.hostname.includes('google.com') || url.hostname.includes('googleapis.com')) {
