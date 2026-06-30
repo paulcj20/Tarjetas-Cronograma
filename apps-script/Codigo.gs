@@ -1,21 +1,34 @@
 /**
- * App web para guardar cambios desde la app de Cronogramas en la planilla.
+ * Apps Script UNIFICADO de la planilla de Cronogramas.
  *
- * CÓMO PUBLICARLO (una sola vez):
- *  1. Abrí https://script.google.com  →  "Nuevo proyecto".
- *  2. Borrá lo que haya y pegá TODO este archivo.
- *  3. (Opcional) Poné un token en SECRET y el mismo en la app (campo "Token").
- *  4. Implementar  →  Nueva implementación  →  tipo "Aplicación web".
- *       - Ejecutar como: "Yo".
- *       - Quién tiene acceso: "Cualquier usuario".
- *  5. Copiá la URL que termina en /exec y pegala en la app
- *     (⚙️ → "Guardar cambios (Apps Script)").
+ * Contiene:
+ *   1) La app web (doGet/doPost) que permite editar CHOFER, MATRICULA y los
+ *      horarios desde las tarjetas de la app.
+ *   2) Tu trigger instalable onEditInstalable (edición manual en la planilla).
+ *   3) La lógica común que sincroniza la hoja "Estado" de la Planilla 2 cuando
+ *      se carga una MATRICULA — funciona tanto editando a mano como desde la app.
  *
- * El usuario que publica debe tener permiso de EDICIÓN sobre la planilla.
+ * CÓMO PUBLICAR / ACTUALIZAR (¡importante!):
+ *   1. Abrí el proyecto de Apps Script de la planilla (Extensiones → Apps Script).
+ *   2. Reemplazá TODO el código por este archivo. Guardá (Ctrl+S).
+ *   3. Implementar → Administrar implementaciones → (la de tipo "Aplicación web")
+ *      → ícono lápiz (Editar) → en "Versión" elegí **Nueva versión** → Implementar.
+ *      ⚠️ Si no creás una versión nueva, la URL /exec sigue ejecutando el código viejo.
+ *      Config: Ejecutar como "Yo" · Quién accede "Cualquier usuario".
+ *   4. La URL /exec es la que va en la app (⚙️ → "Guardar cambios (Apps Script)").
+ *      Si la URL no cambió, no hace falta volver a pegarla.
+ *
+ * El trigger instalable onEditInstalable se configura una sola vez en
+ * "Activadores" (reloj ⏰) → Agregar activador → función onEditInstalable,
+ * evento "Al editar". (Si ya lo tenías, no hace falta tocarlo.)
  */
 
-var SECRET = ''; // dejá '' para no usar token, o poné una clave y la misma en la app
+var PLANILLA2_ID = "121UueMo_SABwg2VE7m6Js-ctDxyfaiyt1OrS10wRZGo";
+var SECRET       = ''; // dejá '' para no usar token, o poné una clave y la misma en la app
 
+// ───────────────────────────────────────────────
+// 1) APP WEB (guardar desde las tarjetas)
+// ───────────────────────────────────────────────
 function doGet() {
   return _json({ ok: true, msg: 'online' });
 }
@@ -48,6 +61,9 @@ function doPost(e) {
 
     sh.getRange(rowNum, colIdx + 1).setValue(body.value);
 
+    // Si se editó la MATRICULA, replicamos la sincronización con la Planilla 2.
+    actualizarEstadoDesdeMatricula(body.tab, sh, rowNum, colIdx + 1);
+
     return _json({ ok: true, row: rowNum, col: body.col, value: body.value });
   } catch (err) {
     return _json({ ok: false, error: String(err && err.message || err) });
@@ -58,4 +74,80 @@ function _json(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ───────────────────────────────────────────────
+// 2) TRIGGER INSTALABLE (edición manual en la planilla)
+// ───────────────────────────────────────────────
+function onEditInstalable(e) {
+  var range = e.range;
+  var sheet = range.getSheet();
+  actualizarEstadoDesdeMatricula(sheet.getName(), sheet, range.getRow(), range.getColumn());
+}
+
+// ───────────────────────────────────────────────
+// 3) LÓGICA COMÚN: al cargar una MATRICULA, actualiza "Estado" en Planilla 2.
+//    Se usa tanto desde el trigger manual como desde la app web (doPost).
+//    'col' es la columna (1-based) que se acaba de editar.
+// ───────────────────────────────────────────────
+function actualizarEstadoDesdeMatricula(sheetName, sheet, row, col) {
+  var matriculaCol, contenedorCol, destinoCol;
+
+  if (sheetName === "FORD" && col === 9) {
+    matriculaCol  = 9;
+    contenedorCol = 2;
+    destinoCol    = 7;
+  } else if (sheetName === "PEUGEOT" && col === 10) {
+    matriculaCol  = 10;
+    contenedorCol = 4;
+    destinoCol    = 8;
+  } else {
+    return;
+  }
+
+  if (row === 1) return;
+
+  var matricula = sheet.getRange(row, matriculaCol).getValue();
+  if (!matricula || String(matricula).trim() === "") return;
+
+  var contenedor = sheet.getRange(row, contenedorCol).getValue();
+  var destino    = sheet.getRange(row, destinoCol).getValue();
+  var cliente    = sheetName + " / " + destino;
+
+  try {
+    var planilla2   = SpreadsheetApp.openById(PLANILLA2_ID);
+    var estadoSheet = planilla2.getSheetByName("Estado");
+
+    if (!estadoSheet) {
+      Logger.log("ERROR: No se encontro la hoja Estado en Planilla 2.");
+      return;
+    }
+
+    var data         = estadoSheet.getDataRange().getValues();
+    var matriculaStr = String(matricula).trim().toUpperCase();
+    var encontrado   = false;
+
+    for (var i = 1; i < data.length; i++) {
+      var valorC = String(data[i][2]).trim().toUpperCase();
+      if (valorC === matriculaStr) {
+        var targetRow = i + 1;
+        var now  = new Date();
+        var hora = Utilities.formatDate(now, Session.getScriptTimeZone(), "HH:mm");
+        estadoSheet.getRange(targetRow, 4).setValue("Asignado");
+        estadoSheet.getRange(targetRow, 5).setValue(hora);
+        estadoSheet.getRange(targetRow, 6).setValue(cliente);
+        estadoSheet.getRange(targetRow, 7).setValue(contenedor);
+        Logger.log("Actualizado fila " + targetRow + " mat:" + matricula + " cliente:" + cliente + " cont:" + contenedor);
+        encontrado = true;
+        break;
+      }
+    }
+
+    if (!encontrado) {
+      Logger.log("AVISO: Matricula " + matricula + " no encontrada en columna C.");
+    }
+
+  } catch (err) {
+    Logger.log("ERROR: " + err.message);
+  }
 }
