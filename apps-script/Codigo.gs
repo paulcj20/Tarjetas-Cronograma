@@ -36,6 +36,7 @@ function doGet() {
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
+    Logger.log('doPost recibido: ' + JSON.stringify(body));
 
     if (SECRET && body.token !== SECRET) throw new Error('Token inválido');
     if (!body.spreadsheetId) throw new Error('Falta spreadsheetId');
@@ -45,27 +46,36 @@ function doPost(e) {
     var sh = ss.getSheetByName(body.tab);
     if (!sh) throw new Error('No existe la pestaña "' + body.tab + '"');
 
-    var values  = sh.getDataRange().getValues();
+    var rng     = sh.getDataRange();
+    var values  = rng.getValues();         // valores crudos
+    var display = rng.getDisplayValues();  // valores como se ven (igual que en la app)
     var headers = values[0];
     var keyIdx  = headers.indexOf(body.keyCol);
     var colIdx  = headers.indexOf(body.col);
-    if (keyIdx < 0) throw new Error('No existe la columna clave "' + body.keyCol + '"');
-    if (colIdx < 0) throw new Error('No existe la columna "' + body.col + '"');
+    if (keyIdx < 0) throw new Error('No existe la columna clave "' + body.keyCol + '" en ' + body.tab);
+    if (colIdx < 0) throw new Error('No existe la columna "' + body.col + '" en ' + body.tab);
 
-    var target = String(body.keyVal).trim();
+    // Normalizamos (sin espacios, mayúsculas) y comparamos contra valor crudo o visible
+    var norm   = function (x) { return String(x == null ? '' : x).trim().toUpperCase().replace(/\s+/g, ''); };
+    var target = norm(body.keyVal);
     var rowNum = -1;
     for (var i = 1; i < values.length; i++) {
-      if (String(values[i][keyIdx]).trim() === target) { rowNum = i + 1; break; }
+      if (norm(values[i][keyIdx]) === target || norm(display[i][keyIdx]) === target) {
+        rowNum = i + 1;
+        break;
+      }
     }
-    if (rowNum < 0) throw new Error('No se encontró la fila con ' + body.keyCol + ' = ' + body.keyVal);
+    if (rowNum < 0) throw new Error('No se encontró la fila con ' + body.keyCol + ' = "' + body.keyVal + '"');
 
     sh.getRange(rowNum, colIdx + 1).setValue(body.value);
+    Logger.log('OK: ' + body.tab + ' fila ' + rowNum + ' col ' + (colIdx + 1) + ' (' + body.col + ') = ' + body.value);
 
     // Si se editó la MATRICULA, replicamos la sincronización con la Planilla 2.
     actualizarEstadoDesdeMatricula(body.tab, sh, rowNum, colIdx + 1);
 
     return _json({ ok: true, row: rowNum, col: body.col, value: body.value });
   } catch (err) {
+    Logger.log('doPost ERROR: ' + (err && err.message || err));
     return _json({ ok: false, error: String(err && err.message || err) });
   }
 }
