@@ -189,6 +189,26 @@
     .kv-v.num { font-variant-numeric: tabular-nums; }
     .kv-v mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
 
+    /* ── Fila de horarios (varias columnas en una sola fila) ── */
+    .kv-inline { display: flex; gap: 6px; flex-wrap: nowrap; }
+    .ti {
+      flex: 1 1 0; min-width: 0;
+      background: var(--surf2); border-radius: 8px;
+      padding: 5px 6px; text-align: center;
+    }
+    .ti:active { opacity: .6; }
+    .ti-k {
+      display: block; font-size: 10px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .03em;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ti-v {
+      display: block; font-size: 13px; font-weight: 600;
+      font-variant-numeric: tabular-nums; margin-top: 1px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ti-v mark { background: rgba(59,130,246,.25); color: var(--primary); border-radius: 3px; padding: 0 2px; }
+
     /* ── Header fecha/contenedor (un solo header) ── */
     .card-header {
       padding: 9px 14px;
@@ -477,6 +497,8 @@ const SHEET_CONFIG = {
       { key: 'Fecha',      side: 'left',  cls: 'hdr-fecha' },
       { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
     ],
+    // Horarios en una sola fila: J=9(Ingreso), K=10(S1), L=11(I2), M=12(Salida)
+    inlineCols: [9, 10, 11, 12],
     filterRequired: 'Contenedor',
   },
   'PEUGEOT': {
@@ -488,6 +510,8 @@ const SHEET_CONFIG = {
       { key: 'A',          side: 'left',  cls: 'hdr-fecha' },  // columna A = fecha (sin encabezado)
       { key: 'Contenedor', side: 'right', cls: 'hdr-cont'  }
     ],
+    // Horarios en una sola fila: K=10(Ingreso), L=11(Salida)
+    inlineCols: [10, 11],
     filterRequired: 'Contenedor',
   },
   'Estado': {
@@ -876,9 +900,12 @@ function buildCard(row, headers, sheetTab) {
   body.className = 'card-body';
   let count = 0;
 
+  const inlineSet = new Set(scfg.inlineCols || []);
+
   headers.forEach((k, i) => {
     if (!isColVisible(k, i, scfg)) return;
     if (extraKeys.has(k)) return;
+    if (inlineSet.has(i)) return;
     if (!extras.length && i === titleIdx) return;
     const c = row[k];
 
@@ -903,6 +930,40 @@ function buildCard(row, headers, sheetTab) {
     body.appendChild(kv);
     count++;
   });
+
+  // Fila de horarios: varias columnas mostradas juntas en una sola fila
+  const inlineCols = (scfg.inlineCols || []).filter(i => headers[i] !== undefined);
+  if (inlineCols.length) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kv-inline';
+    inlineCols.forEach(i => {
+      const k = headers[i];
+      const c = row[k];
+      const valTxt = c?.d || '';
+
+      const ti = document.createElement('div');
+      ti.className = 'ti';
+      if (valTxt) {
+        ti.style.cursor = 'pointer';
+        ti.title = `Tocar para copiar "${valTxt}"`;
+        ti.addEventListener('click', () => copyToClipboard(valTxt));
+      }
+
+      const tk = document.createElement('span');
+      tk.className = 'ti-k';
+      tk.textContent = displayLabel(k);
+
+      const tv = document.createElement('span');
+      tv.className = 'ti-v';
+      tv.innerHTML = valTxt ? highlightText(valTxt, searchQ) : '<span style="opacity:.3">—</span>';
+
+      ti.appendChild(tk);
+      ti.appendChild(tv);
+      rowEl.appendChild(ti);
+    });
+    body.appendChild(rowEl);
+    count++;
+  }
 
   if (count) div.appendChild(body);
   return div;
