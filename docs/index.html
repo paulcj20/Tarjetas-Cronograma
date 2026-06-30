@@ -612,13 +612,16 @@ function normTime(s) {
   return '';
 }
 
-// Envía un cambio a la planilla vía la app web de Apps Script
+// Envía un cambio a la planilla vía la app web de Apps Script.
+// Apps Script no manda cabeceras CORS, así que usamos mode:'no-cors':
+// el pedido se ejecuta (guarda la celda) pero la respuesta es opaca y no se
+// puede leer. Si el fetch no lanza, asumimos que se envió correctamente.
 async function saveCell(tab, keyCol, keyVal, col, value) {
   if (!cfg.apiUrl) throw new Error('NO_API');
   const sheet = cfg.sheets.find(s => s.tab === tab) || {};
-  const res = await fetch(cfg.apiUrl, {
+  await fetch(cfg.apiUrl, {
     method: 'POST',
-    redirect: 'follow',
+    mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
       token: cfg.apiToken || '',
@@ -626,11 +629,6 @@ async function saveCell(tab, keyCol, keyVal, col, value) {
       tab, keyCol, keyVal, col, value
     })
   });
-  const txt = await res.text();
-  let data = {};
-  try { data = JSON.parse(txt); } catch { throw new Error('Respuesta inválida'); }
-  if (!data.ok) throw new Error(data.error || 'Error al guardar');
-  return data;
 }
 
 // Confirma el cambio: actualiza local, guarda y re-renderiza
