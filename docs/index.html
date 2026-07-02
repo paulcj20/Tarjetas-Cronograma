@@ -516,8 +516,8 @@ const HIDDEN_COLUMNS = new Set(['S', 'T', 'U']);
 
 const SHEET_CONFIG = {
   'FORD': {
-    // A=0,B=1,D=3,E=4,F=5,G=6,H=7,I=8,O=14,V=21
-    visibleColIdxs: new Set([0, 1, 3, 4, 5, 6, 7, 8, 14, 21]),
+    // A=0,B=1,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11,M=12,O=14,V=21
+    visibleColIdxs: new Set([0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 21]),
     headerExtras: [
       { key: 'Fecha',  side: 'left',  cls: 'hdr-fecha' },
       { key: 'CHOFER', side: 'right', cls: 'hdr-cont'  }
@@ -530,11 +530,10 @@ const SHEET_CONFIG = {
   },
   'PEUGEOT': {
     // Letras del Sheet → índice 0-based (A=0, B=1, ...):
-    // A=0(fecha), C=2(Lote), D=3(Contenedor), E=4(DUA), F=5(Canal), G=6(Depo),
-    // H=7(DESTINO), I=8(CHOFER), J=9(MATRICULA), N=13(OBSERVACIONES), U=20(Mensaje)
-    visibleColIdxs: new Set([0, 2, 3, 4, 5, 6, 7, 8, 9, 13, 20]),
+    // A=0(Fecha), B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8(CHOFER), J=9, K=10, L=11, N=13, U=20
+    visibleColIdxs: new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 20]),
     headerExtras: [
-      { key: 'A',       side: 'left',  cls: 'hdr-fecha' },  // columna A = fecha (sin encabezado)
+      { key: 'Fecha',   side: 'left',  cls: 'hdr-fecha' },
       { key: 'CHOFER',  side: 'right', cls: 'hdr-cont'  }
     ],
     // Horarios en una sola fila: K=10(Ingreso), L=11(Salida)
@@ -1023,8 +1022,6 @@ function buildCard(row, headers, sheetTab) {
 
     const top = document.createElement('div');
     top.className = 'card-top';
-    top.style.cursor = 'pointer';
-    top.addEventListener('click', () => copyToClipboard(titleRaw));
 
     const wrap = document.createElement('div');
     wrap.className = 'card-title-wrap';
@@ -1084,9 +1081,12 @@ function buildCard(row, headers, sheetTab) {
     if (editable) {
       kv.title = 'Tocar para editar';
       kv.addEventListener('click', () => startEditKV(vEl, sheetTab, row, k));
-    } else {
+    } else if (k === 'Mensaje') {
       kv.title = valTxt ? `Tocar para copiar "${valTxt}"` : '';
-      if (valTxt) kv.addEventListener('click', () => copyToClipboard(valTxt));
+      if (valTxt) {
+        kv.style.cursor = 'pointer';
+        kv.addEventListener('click', () => copyToClipboard(valTxt));
+      }
     }
 
     kv.appendChild(kEl);
