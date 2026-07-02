@@ -1,7 +1,7 @@
 {
-  "name": "Finanzas Dashboard",
-  "short_name": "Finanzas",
-  "description": "Tus hojas de Google Sheets en tarjetas, siempre actualizadas",
+  "name": "Cronogramas / Estado",
+  "short_name": "Cronogramas",
+  "description": "Cronogramas y estado en tarjetas, siempre actualizados",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

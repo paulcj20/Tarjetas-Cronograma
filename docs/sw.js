@@ -20,9 +20,12 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Solo manejamos GET (lecturas). Los POST (guardar en Apps Script) van
+  // directo a la red sin que el SW los toque, para no romper el guardado.
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
 
-  // Llamadas a Google Sheets → siempre red
   if (url.hostname.includes('google.com') || url.hostname.includes('googleapis.com')) {
     e.respondWith(
       fetch(e.request).catch(() =>
@@ -35,7 +38,6 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // App shell → cache primero, red como fallback
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
